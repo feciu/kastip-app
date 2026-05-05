@@ -1,0 +1,24 @@
+# Secrets — NEVER commit
+config/secrets.php
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PHP
+vendor/
+composer.lock
+
+# Build
+node_modules/
+dist/
