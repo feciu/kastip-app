@@ -7,6 +7,10 @@ export const KASTIP_BASE = 'https://kastip.app';
 export const MIN_TIP_KAS = 0.5;
 export const SOMPI_PER_KAS = 100_000_000;
 
+// Block explorer for "View TX" links + auto-reply.
+// Change here to swap to a different explorer (explorer.kaspa.org, etc.).
+export const KASPA_EXPLORER_TX = 'https://kaspa.stream/transactions';
+
 // Token storage key (chrome.storage.local).
 export const STORAGE_TOKEN = 'kastip_token';
 export const STORAGE_USER = 'kastip_user';

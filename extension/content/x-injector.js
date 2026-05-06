@@ -16,6 +16,7 @@
 
 const MIN_TIP_KAS = 0.5;
 const SOMPI_PER_KAS = 100_000_000;
+const KASPA_EXPLORER_TX = 'https://kaspa.stream/transactions';
 
 const SELECTORS = {
   userName: '[data-testid="User-Name"]',
@@ -477,25 +478,56 @@ function renderSuccessPane(modal, body, handle, amt, txid, conf, tweetUrl) {
     pending: '⏳ Pending',
   }[conf.status] || conf.status;
 
+  const replyLines = [
+    `Just sent you ${amt} KAS via @KasTip ⚡`,
+    `TX: ${KASPA_EXPLORER_TX}/${txid}`,
+    `kastip.app`,
+  ];
+  const replyText = replyLines.join('\n');
+
   body.innerHTML = `
     <div style="text-align:center">
       <div style="font-size:2rem;margin:1rem 0">🎉</div>
       <h3 style="margin-bottom:.5rem">Tip sent to @${escapeHtml(handle)}</h3>
-      <p style="color:#71767b;margin-bottom:1rem">${amt} KAS — ${statusLabel}</p>
+      <p style="color:#71767b;margin-bottom:.85rem">${amt} KAS — ${statusLabel}</p>
       <p style="font-size:.78rem;color:#71767b;margin-bottom:1rem;font-family:ui-monospace,monospace;word-break:break-all">
-        <a href="https://explorer.kaspa.org/txs/${escapeHtml(txid)}" target="_blank" rel="noopener" style="color:#49e9c9">${escapeHtml(txid.slice(0, 16))}…</a>
+        <a href="${KASPA_EXPLORER_TX}/${escapeHtml(txid)}" target="_blank" rel="noopener" style="color:#49e9c9">${escapeHtml(txid.slice(0, 16))}…</a>
       </p>
-      ${tweetUrl ? '<button id="kastip-prefill-reply" class="kastip-send-btn">Pre-fill reply on this tweet</button>' : ''}
-      <button id="kastip-close-success" class="kastip-secondary-btn" style="margin-top:.5rem">Close</button>
     </div>
+
+    <div class="kastip-reply-preview">
+      <label class="kastip-reply-label">Suggested reply (copy or pre-fill):</label>
+      <textarea id="kastip-reply-text" readonly>${escapeHtml(replyText)}</textarea>
+      <div class="kastip-reply-actions">
+        <button id="kastip-copy-reply" class="kastip-secondary-btn">📋 Copy</button>
+        ${tweetUrl ? '<button id="kastip-prefill-reply" class="kastip-send-btn">↪ Pre-fill in reply box</button>' : ''}
+      </div>
+    </div>
+
+    <button id="kastip-close-success" class="kastip-secondary-btn" style="margin-top:.75rem">Close</button>
   `;
+
   body.querySelector('#kastip-close-success').addEventListener('click', () => modal.remove());
+
+  body.querySelector('#kastip-copy-reply').addEventListener('click', () => {
+    navigator.clipboard.writeText(replyText).then(() => {
+      const btn = body.querySelector('#kastip-copy-reply');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    });
+  });
+
   if (tweetUrl) {
     body.querySelector('#kastip-prefill-reply').addEventListener('click', () => {
-      const replyText = `Just tipped ${amt} KAS to @${handle} via @KasTip ⚡\n\nkastip.app`;
-      const ok = prefillReply(replyText);
+      const ok = prefillReply(replyLines);
       if (!ok) {
-        alert("Couldn't find a reply box on this page. Open the tweet, click Reply, then come back here.");
+        // Reply box not on this page — auto-copy to clipboard so user can paste
+        navigator.clipboard.writeText(replyText).then(() => {
+          const btn = body.querySelector('#kastip-prefill-reply');
+          btn.textContent = '⚠ No reply box — copied to clipboard';
+          btn.disabled = true;
+        });
       } else {
         modal.remove();
       }
@@ -504,13 +536,19 @@ function renderSuccessPane(modal, body, handle, amt, txid, conf, tweetUrl) {
 }
 
 // ─── auto-reply pre-fill on X ─────────────────────────────────────────────
-function prefillReply(text) {
+// X's reply box is a React contenteditable. document.execCommand('insertText')
+// works but `\n` characters are silently truncated — anything after the first
+// newline gets dropped. So we insert each line separately with insertParagraph
+// (which dispatches the right input events for React to sync state).
+function prefillReply(lines) {
   const ta = document.querySelector(SELECTORS.replyTextarea);
   if (!ta) return false;
-  // X uses React contenteditable for tweetTextarea — direct value won't work.
-  // Use the textContent and dispatch an input event so React state syncs.
   ta.focus();
-  document.execCommand('insertText', false, text);
+  const arr = Array.isArray(lines) ? lines : String(lines).split('\n');
+  for (let i = 0; i < arr.length; i++) {
+    if (i > 0) document.execCommand('insertParagraph');
+    document.execCommand('insertText', false, arr[i]);
+  }
   return true;
 }
 

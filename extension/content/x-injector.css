@@ -351,3 +351,38 @@
   text-align: left;
 }
 .kastip-link-btn:hover { color: #49e9c9; }
+
+.kastip-reply-preview {
+  margin-top: .75rem;
+  padding: .85rem;
+  background: rgba(73, 233, 201, .04);
+  border: 1px solid rgba(73, 233, 201, .2);
+  border-radius: 8px;
+}
+.kastip-reply-label {
+  display: block;
+  font-size: .8rem;
+  color: #a8b1c2;
+  margin-bottom: .4rem;
+}
+.kastip-reply-preview textarea {
+  width: 100%;
+  min-height: 5.5em;
+  padding: .55rem .7rem;
+  background: #0d0f1a;
+  border: 1px solid #2a2f44;
+  border-radius: 6px;
+  color: #e8eaed;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: .85rem;
+  line-height: 1.45;
+  resize: vertical;
+  outline: none;
+}
+.kastip-reply-preview textarea:focus { border-color: #49e9c9; }
+.kastip-reply-actions {
+  display: flex;
+  gap: .4rem;
+  margin-top: .55rem;
+}
+.kastip-reply-actions button { flex: 1; margin: 0; }
