@@ -21,10 +21,23 @@ $r->get('/api/health', function () {
     ]);
 });
 
-// ─── auth (X OAuth) — wired in C8 ─────────────────────────────────────────
-// $r->get('/api/auth/x/start',    fn() => \KasTip\Auth\XOauth::start());
-// $r->get('/api/auth/x/callback', fn() => \KasTip\Auth\XOauth::callback());
-// $r->post('/api/auth/logout',    fn() => \KasTip\Auth\Session::logout());
+// ─── auth ─────────────────────────────────────────────────────────────────
+$r->get('/api/auth/x/start',    fn() => \KasTip\Auth\XOauth::start());
+$r->get('/api/auth/x/callback', fn() => \KasTip\Auth\XOauth::callback());
+$r->post('/api/auth/logout',    fn() => \KasTip\Auth\Session::logout());
+
+// Quick "who am I" (sanity check that session/bearer works end-to-end)
+$r->get('/api/auth/whoami', function () {
+    $s = \KasTip\Auth\Session::current();
+    if ($s === null) {
+        \KasTip\App::jsonResponse(['authenticated' => false]);
+    }
+    \KasTip\App::jsonResponse([
+        'authenticated' => true,
+        'user_id' => $s['user_id'],
+        'client_kind' => $s['client_kind'],
+    ]);
+});
 
 // ─── users ────────────────────────────────────────────────────────────────
 // $r->get('/api/users/me',           fn() => \KasTip\Api\UsersMe::handle());
