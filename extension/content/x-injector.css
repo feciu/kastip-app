@@ -340,3 +340,14 @@
   margin-top: .35rem;
 }
 #kastip-modal #kastip-txid:focus { outline: none; border-color: #49e9c9; }
+
+.kastip-link-btn {
+  background: transparent;
+  border: none;
+  color: #a8b1c2;
+  font-size: .82rem;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.kastip-link-btn:hover { color: #49e9c9; }

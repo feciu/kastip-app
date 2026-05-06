@@ -15,6 +15,12 @@
   "content_scripts": [
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["content/x-bridge.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
       "js": ["content/x-injector.js"],
       "css": ["content/x-injector.css"],
       "run_at": "document_idle"

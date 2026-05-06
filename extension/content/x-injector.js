@@ -38,6 +38,41 @@ function bg(msg) {
   });
 }
 
+// ─── page-world bridge for window.kasware ─────────────────────────────────
+// Kasware injects into MAIN world; we run in ISOLATED. The bridge
+// (content/x-bridge.js, world:"MAIN") proxies via window.postMessage.
+let __bridgeReqId = 0;
+function bridgeCall(method, params, timeoutMs = 60_000) {
+  return new Promise((resolve, reject) => {
+    const id = 'k' + (++__bridgeReqId);
+    const t0 = setTimeout(() => {
+      window.removeEventListener('message', onMsg);
+      reject(new Error('Bridge timeout for ' + method));
+    }, timeoutMs);
+    const onMsg = (event) => {
+      if (event.source !== window) return;
+      const data = event.data;
+      if (!data || data.kastip_kind !== 'response' || data.id !== id) return;
+      clearTimeout(t0);
+      window.removeEventListener('message', onMsg);
+      if (data.ok) resolve(data.result);
+      else reject(new Error(data.error || 'bridge_error'));
+    };
+    window.addEventListener('message', onMsg);
+    window.postMessage({ kastip_kind: 'request', id, method, params }, '*');
+  });
+}
+async function hasKasware() {
+  try { return await bridgeCall('kasware:check', null, 1500); }
+  catch { return false; }
+}
+async function kaswareRequestAccounts() {
+  return await bridgeCall('kasware:requestAccounts');
+}
+async function kaswareSendKaspa(address, sompi, options) {
+  return await bridgeCall('kasware:sendKaspa', { address, sompi, options });
+}
+
 // ─── observer + injection ─────────────────────────────────────────────────
 function init() {
   console.log('[KasTip] content script active on', location.hostname);
@@ -250,19 +285,23 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
       return;
     }
 
-    // 3) Kasware sendKaspa (single-output)
-    if (!window.kasware) {
-      // Kasware not detected → switch to QR fallback with this initiated tip
+    // 3) Kasware sendKaspa (single-output) — call through MAIN-world bridge
+    const haveKasware = await hasKasware();
+    if (!haveKasware) {
       renderQrPane(modal, body, handle, init);
       return;
     }
     let txid;
     try {
-      const accs = await window.kasware.requestAccounts();
+      const accs = await kaswareRequestAccounts();
       if (!accs || accs.length === 0) throw new Error('No wallet account');
       const sompi = Math.floor(amt * SOMPI_PER_KAS);
-      txid = await window.kasware.sendKaspa(init.receiver_address, sompi, { payload: init.payload });
+      txid = await kaswareSendKaspa(init.receiver_address, sompi, { payload: init.payload });
     } catch (e) {
+      if (e.message === 'NO_KASWARE') {
+        renderQrPane(modal, body, handle, init);
+        return;
+      }
       showErr('Wallet error: ' + (e.message || e));
       return;
     }
@@ -307,7 +346,8 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
 // ─── QR fallback pane ─────────────────────────────────────────────────────
 async function renderQrPane(modal, body, handle, init) {
   body.innerHTML = `
-    <p style="color:#71767b;margin-bottom:.75rem">Scan with any Kaspa wallet, then paste the TXID below.</p>
+    <button id="kastip-qr-back" class="kastip-link-btn" type="button">← Back</button>
+    <p style="color:#71767b;margin:.5rem 0 .75rem">Scan with any Kaspa wallet, then paste the TXID below.</p>
     <div class="kastip-qr-wrap" id="kastip-qr"></div>
     <div class="kastip-uri-box" id="kastip-uri">${escapeHtml(init.qr_uri)}</div>
     <button id="kastip-copy-uri" class="kastip-secondary-btn">Copy URI</button>
@@ -316,6 +356,12 @@ async function renderQrPane(modal, body, handle, init) {
     <div class="kastip-error" id="kastip-qr-err" style="display:none"></div>
     <button id="kastip-confirm" class="kastip-send-btn">Confirm tip</button>
   `;
+  body.querySelector('#kastip-qr-back').addEventListener('click', () => {
+    // Re-render registered amount pane. The pending tip in DB stays — it'll be
+    // garbage-collected eventually, no harm.
+    const fakeInfo = { kaspa_address: init.receiver_address };
+    renderRegisteredPane(modal, body, handle, fakeInfo, null);
+  });
   // QR — use bundled qr.js (loaded as web_accessible_resource)
   try {
     const { generateQrSvg } = await import(chrome.runtime.getURL('lib/qr.js'));
