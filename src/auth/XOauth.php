@@ -94,27 +94,42 @@ final class XOauth
         $state = $_GET['state'] ?? '';
         $error = $_GET['error'] ?? null;
 
+        // Try to recover redirect_after from state row before any cleanup,
+        // so we can send the user back where they came from on cancel.
+        $pdo = App::db();
+        $stateRow = null;
+        if ($state !== '') {
+            $stmt = $pdo->prepare("
+                SELECT code_verifier, client_kind, extension_id, redirect_after
+                FROM oauth_states
+                WHERE state = :s AND expires_at > NOW()
+                LIMIT 1
+            ");
+            $stmt->execute(['s' => $state]);
+            $stateRow = $stmt->fetch(PDO::FETCH_ASSOC);
+            // Always cleanup the state row (one-time use, even on error).
+            $pdo->prepare("DELETE FROM oauth_states WHERE state = :s")->execute(['s' => $state]);
+        }
+
         if ($error !== null) {
+            // User cancelled the OAuth prompt on X — that's not really an error,
+            // bring them back to where they started (or landing if state lost).
+            if ($error === 'access_denied') {
+                $back = ($stateRow && !empty($stateRow['redirect_after']))
+                    ? $stateRow['redirect_after']
+                    : '/';
+                $sep = str_contains($back, '?') ? '&' : '?';
+                header("Location: {$back}{$sep}cancelled=1", true, 302);
+                exit;
+            }
             App::abort(400, "X OAuth error: $error");
         }
         if ($code === '' || $state === '') {
             App::abort(400, 'Missing code or state.');
         }
-
-        // Look up state, then DELETE it (one-time use).
-        $pdo = App::db();
-        $stmt = $pdo->prepare("
-            SELECT code_verifier, client_kind, extension_id, redirect_after
-            FROM oauth_states
-            WHERE state = :s AND expires_at > NOW()
-            LIMIT 1
-        ");
-        $stmt->execute(['s' => $state]);
-        $stateRow = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$stateRow) {
             App::abort(400, 'Invalid or expired state.');
         }
-        $pdo->prepare("DELETE FROM oauth_states WHERE state = :s")->execute(['s' => $state]);
 
         $verifier = $stateRow['code_verifier'];
         $clientKind = $stateRow['client_kind'];

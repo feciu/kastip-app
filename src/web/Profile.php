@@ -383,6 +383,7 @@ $('#show-qr').addEventListener('click', async (e) => {
     private static function renderUnregistered(string $handle, string $inviteToken): void
     {
         $hasInvite = $inviteToken !== '';
+        $cancelled = isset($_GET['cancelled']);
         header('Content-Type: text/html; charset=utf-8');
         ?><!DOCTYPE html>
 <html lang="en">
@@ -456,7 +457,22 @@ $('#show-qr').addEventListener('click', async (e) => {
       <p class="lead">If this is your X handle, you can register in 30 seconds and start receiving KAS tips from anyone on X.</p>
     <?php endif; ?>
 
-    <a href="/api/auth/x/start?from=%2Fonboard%2Faddress" class="btn">Connect X to claim</a>
+    <?php if ($cancelled): ?>
+      <div style="margin-bottom:1.25rem;padding:.75rem 1rem;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;color:#fcd34d;font-size:.88rem">
+        Sign-in cancelled. Try again whenever you're ready.
+      </div>
+    <?php endif; ?>
+
+    <a href="/api/auth/x/start?from=<?= urlencode('/u/' . $handle) ?>" class="btn">Connect X to claim</a>
+
+    <div class="smalls" style="margin-top:1rem;padding:.85rem 1rem;background:rgba(73,233,201,.06);border:1px solid rgba(73,233,201,.2);border-radius:8px;text-align:left">
+      <strong style="color:#49e9c9">⚠️ Make sure you're logged into X as @<?= htmlspecialchars($handle, ENT_QUOTES, 'UTF-8') ?></strong><br>
+      X uses your current browser session — it can't show an account picker. If you're logged in as a different handle, either:
+      <ul style="margin-top:.5rem;padding-left:1.25rem;line-height:1.7">
+        <li>Sign out of <a href="https://x.com/logout" target="_blank" rel="noopener" style="color:#49e9c9">x.com/logout</a> and sign in as @<?= htmlspecialchars($handle, ENT_QUOTES, 'UTF-8') ?>, then come back here</li>
+        <li>Or open this page in a private/incognito tab and sign into X there</li>
+      </ul>
+    </div>
 
     <div class="smalls">
       <strong>How it works:</strong> sign in with X → add your Kaspa address → done. We never hold funds; tips arrive directly to your wallet.
