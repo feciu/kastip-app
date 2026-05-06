@@ -13,9 +13,13 @@ OUT="${1:-./kastip-extension-${VERSION}.zip}"
 # Clean any prior build
 rm -f "$OUT"
 
-# Zip everything except dotfiles, build artefacts, the script itself
+# Zip everything except dotfiles, build artefacts, the script itself.
+# Defensive: also exclude common archive types (in case someone scp's
+# a handoff tarball into this dir by mistake) and node/cache leftovers.
 zip -qr "$OUT" . \
-  -x 'build.sh' '*.DS_Store' '*.zip' '.git/*' '.gitignore' 'README.md'
+  -x 'build.sh' '*.DS_Store' '*.zip' '*.tar.gz' '*.tgz' '*.tar' \
+     '.git/*' '.gitignore' 'README.md' \
+     'node_modules/*' '.cache/*' '*.swp'
 
 ls -la "$OUT"
 echo
