@@ -479,7 +479,7 @@ function renderSuccessPane(modal, body, handle, amt, txid, conf, tweetUrl) {
   }[conf.status] || conf.status;
 
   const replyLines = [
-    `Just sent you ${amt} KAS via @KasTip ⚡`,
+    `Just sent you ${amt} KAS via @kastipapp ⚡`,
     `TX: ${KASPA_EXPLORER_TX}/${txid}`,
     `kastip.app`,
   ];
