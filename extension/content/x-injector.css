@@ -1,0 +1,342 @@
+/* ============================================
+   KasTip POC — wstrzykiwane style
+   ============================================ */
+
+.kastip-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  margin-left: 8px !important;
+  background: linear-gradient(135deg, #49e9c9 0%, #2dd4bf 100%) !important;
+  color: #0a0e1a !important;
+  border: none !important;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif !important;
+  cursor: pointer !important;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+  box-shadow: 0 1px 3px rgba(73, 233, 201, 0.3) !important;
+  vertical-align: middle !important;
+  line-height: 1.2 !important;
+  height: auto !important;
+  white-space: nowrap !important;
+}
+
+.kastip-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 8px rgba(73, 233, 201, 0.5) !important;
+}
+
+.kastip-btn:active {
+  transform: translateY(0) !important;
+}
+
+.kastip-icon {
+  font-size: 14px !important;
+}
+
+.kastip-label {
+  font-weight: 700 !important;
+}
+
+/* ============================================
+   Modal
+   ============================================ */
+
+#kastip-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2147483647 !important;
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif !important;
+}
+
+#kastip-modal *, #kastip-modal *::before, #kastip-modal *::after {
+  box-sizing: border-box !important;
+}
+
+.kastip-modal-overlay {
+  position: absolute !important;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+.kastip-modal-content {
+  position: relative !important;
+  max-width: 440px !important;
+  width: calc(100% - 32px) !important;
+  margin: 80px auto 0 !important;
+  background: #15202b !important;
+  color: #e7e9ea !important;
+  border-radius: 16px !important;
+  border: 1px solid #2f3336 !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+  overflow: hidden !important;
+}
+
+.kastip-modal-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 16px 20px !important;
+  border-bottom: 1px solid #2f3336 !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+}
+
+.kastip-close {
+  background: transparent !important;
+  border: none !important;
+  color: #71767b !important;
+  font-size: 28px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+}
+
+.kastip-close:hover {
+  color: #e7e9ea !important;
+}
+
+.kastip-modal-body {
+  padding: 20px !important;
+}
+
+/* Amount row */
+.kastip-amount-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 12px !important;
+}
+
+.kastip-amount-row label {
+  font-size: 14px !important;
+  color: #8b98a5 !important;
+  font-weight: 500 !important;
+}
+
+.kastip-amount-row input {
+  width: 130px !important;
+  padding: 8px 12px !important;
+  background: #0f1419 !important;
+  border: 1px solid #2f3336 !important;
+  border-radius: 8px !important;
+  color: #e7e9ea !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  text-align: right !important;
+  font-family: inherit !important;
+}
+
+.kastip-amount-row input:focus {
+  outline: none !important;
+  border-color: #49e9c9 !important;
+}
+
+/* Quick amount buttons */
+.kastip-quick-amounts {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 6px !important;
+  margin-bottom: 16px !important;
+}
+
+.kastip-quick-amounts button {
+  padding: 8px !important;
+  background: #1d2733 !important;
+  border: 1px solid #2f3336 !important;
+  border-radius: 8px !important;
+  color: #e7e9ea !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  transition: all 0.15s !important;
+  font-family: inherit !important;
+}
+
+.kastip-quick-amounts button:hover {
+  background: #2c3640 !important;
+  border-color: #49e9c9 !important;
+  color: #49e9c9 !important;
+}
+
+/* Breakdown */
+.kastip-breakdown {
+  background: #0f1419 !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  margin-bottom: 14px !important;
+  font-size: 14px !important;
+}
+
+.kastip-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  padding: 4px 0 !important;
+  color: #8b98a5 !important;
+}
+
+.kastip-row.kastip-total {
+  border-top: 1px solid #2f3336 !important;
+  margin-top: 6px !important;
+  padding-top: 10px !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  color: #49e9c9 !important;
+}
+
+.kastip-receiver-amount,
+.kastip-total-amount {
+  font-weight: 700 !important;
+  color: #e7e9ea !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.kastip-row.kastip-total .kastip-total-amount {
+  color: #49e9c9 !important;
+}
+
+.kastip-recipient-info {
+  font-size: 12px !important;
+  color: #71767b !important;
+  margin-bottom: 14px !important;
+  padding: 8px 12px !important;
+  background: #0f1419 !important;
+  border-radius: 6px !important;
+}
+
+.kastip-recipient-info code {
+  color: #8b98a5 !important;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace !important;
+  font-size: 11px !important;
+}
+
+/* Send button */
+.kastip-send-btn {
+  width: 100% !important;
+  padding: 12px !important;
+  background: linear-gradient(135deg, #49e9c9 0%, #2dd4bf 100%) !important;
+  color: #0a0e1a !important;
+  border: none !important;
+  border-radius: 999px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+  font-family: inherit !important;
+}
+
+.kastip-send-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(73, 233, 201, 0.4) !important;
+}
+
+/* Unregistered modal */
+.kastip-unregistered p {
+  margin: 8px 0 !important;
+  line-height: 1.5 !important;
+  color: #e7e9ea !important;
+  font-size: 14px !important;
+}
+
+.kastip-suggested-reply {
+  background: #0f1419 !important;
+  border-left: 3px solid #49e9c9 !important;
+  padding: 12px 14px !important;
+  margin: 16px 0 !important;
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: #8b98a5 !important;
+}
+
+.kastip-suggested-reply strong {
+  color: #e7e9ea !important;
+  display: block !important;
+  margin-bottom: 6px !important;
+}
+
+.kastip-suggested-reply em {
+  color: #e7e9ea !important;
+  font-style: normal !important;
+}
+
+.kastip-hint {
+  font-size: 12px !important;
+  color: #71767b !important;
+  font-style: italic !important;
+  margin-top: 12px !important;
+}
+
+/* ─── production additions: QR pane, success pane, loading ─── */
+.kastip-loading {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #71767b;
+  font-size: .9rem;
+}
+.kastip-error {
+  margin-top: .75rem;
+  padding: .65rem .85rem;
+  background: rgba(239, 68, 68, .08);
+  border: 1px solid rgba(239, 68, 68, .3);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: .85rem;
+}
+.kastip-secondary-btn {
+  width: 100%;
+  padding: .65rem 1rem;
+  background: transparent;
+  border: 1px solid #2a2f44;
+  border-radius: 6px;
+  color: #e8eaed;
+  font-size: .9rem;
+  cursor: pointer;
+  margin-top: .5rem;
+}
+.kastip-secondary-btn:hover {
+  border-color: #49e9c9;
+  color: #49e9c9;
+}
+.kastip-qr-wrap {
+  margin: .75rem auto;
+  padding: .5rem;
+  background: #fff;
+  border-radius: 6px;
+  width: fit-content;
+}
+.kastip-qr-wrap svg { display: block; }
+.kastip-uri-box {
+  font-family: ui-monospace, SF Mono, Monaco, monospace;
+  font-size: .72rem;
+  padding: .55rem .75rem;
+  background: #0d0f1a;
+  border: 1px solid #2a2f44;
+  border-radius: 4px;
+  color: #a8b1c2;
+  word-break: break-all;
+  margin-top: .5rem;
+}
+#kastip-modal #kastip-txid {
+  width: 100%;
+  padding: .65rem .85rem;
+  font-family: ui-monospace, monospace;
+  font-size: .82rem;
+  background: #0d0f1a;
+  border: 1px solid #2a2f44;
+  border-radius: 4px;
+  color: #e8eaed;
+  margin-top: .35rem;
+}
+#kastip-modal #kastip-txid:focus { outline: none; border-color: #49e9c9; }

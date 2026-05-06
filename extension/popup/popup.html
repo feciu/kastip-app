@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KasTip</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div id="app">
+  <div class="logo">KasTip</div>
+
+  <!-- signed-out state -->
+  <div id="state-anon" style="display:none">
+    <p class="lead">Sign in to start tipping KAS to anyone on X.</p>
+    <button id="signin-btn" class="btn btn-primary">Connect X</button>
+    <p class="hint">Non-custodial. We never hold your KAS.</p>
+  </div>
+
+  <!-- signed-in state -->
+  <div id="state-signed" style="display:none">
+    <div class="profile">
+      <img id="avatar" alt="">
+      <div class="meta">
+        <strong id="display-name"></strong>
+        <span id="handle"></span>
+      </div>
+    </div>
+
+    <div id="warn-onboard" class="warn" style="display:none">
+      ⚠️ Add a Kaspa receiving address to start receiving tips.
+      <a href="https://kastip.app/onboard/address" target="_blank" rel="noopener">Set address →</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="lbl">Received</div>
+        <div class="val" id="stat-recv">— KAS</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Sent</div>
+        <div class="val" id="stat-sent">— KAS</div>
+      </div>
+    </div>
+
+    <div class="page-status" id="page-status"></div>
+
+    <div class="row">
+      <a href="https://kastip.app/dashboard" target="_blank" rel="noopener" class="btn btn-secondary">Open dashboard</a>
+      <button id="signout-btn" class="btn btn-link">Sign out</button>
+    </div>
+  </div>
+
+  <!-- loading -->
+  <div id="state-loading" class="loading">Loading…</div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

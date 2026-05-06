@@ -47,10 +47,23 @@ final class XOauth
         if ($extensionId !== null && !preg_match('/^[a-z0-9]{1,64}$/i', $extensionId)) {
             $extensionId = null;
         }
-        $from = $_GET['from'] ?? '/';
-        // Only allow same-origin redirects
-        if (!str_starts_with($from, '/')) {
-            $from = '/';
+
+        // Determine where to redirect after successful auth.
+        //   web:       same-origin path from ?from= (default /)
+        //   extension: chromiumapp.org URL from ?ext_redirect= (chrome.identity)
+        if ($clientKind === 'extension') {
+            $extRedirect = $_GET['ext_redirect'] ?? '';
+            // Whitelist: only chromiumapp.org subdomains (chrome.identity.getRedirectURL format)
+            if (preg_match('#^https://[a-z]{32}\.chromiumapp\.org(/[A-Za-z0-9_/.-]*)?$#i', $extRedirect)) {
+                $from = $extRedirect;
+            } else {
+                App::abort(400, 'Extension flow requires valid ext_redirect (chromiumapp.org URL).');
+            }
+        } else {
+            $from = $_GET['from'] ?? '/';
+            if (!str_starts_with($from, '/')) {
+                $from = '/';
+            }
         }
 
         // PKCE: verifier = 43-128 chars URL-safe random; challenge = base64url(sha256(verifier))
@@ -219,10 +232,14 @@ final class XOauth
 
         // ─── respond ───────────────────────────────────────────────────────
         if ($clientKind === 'extension') {
-            // Render a tiny HTML page that posts the token to the opener (extension popup)
-            // and then closes. Extension's content/popup script listens via window.opener.postMessage.
-            self::renderExtensionCallback($token, $userRow['kaspa_address'] === '');
-            return;
+            // Extension flow: redirect to the chromiumapp.org URL with token.
+            // chrome.identity.launchWebAuthFlow captures this and returns it
+            // to the extension. redirect_after was validated to be chromiumapp.org.
+            $sep = str_contains($redirectAfter, '?') ? '&' : '?';
+            $needsAddress = $userRow['kaspa_address'] === '' ? '1' : '0';
+            $loc = "{$redirectAfter}{$sep}token={$token}&needs_address={$needsAddress}";
+            header("Location: $loc", true, 302);
+            exit;
         }
 
         // Web flow: redirect to dashboard or stored redirect_after.
