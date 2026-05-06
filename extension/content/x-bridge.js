@@ -52,6 +52,7 @@
           if (!window.kasware) { reply({ ok: false, error: 'NO_KASWARE' }); return; }
           const { address, sompi, options } = data.params || {};
           const txid = await window.kasware.sendKaspa(address, sompi, options || {});
+          console.log('[KasTip bridge] kasware.sendKaspa returned:', txid, '(typeof:', typeof txid, ')');
           reply({ ok: true, result: txid });
           return;
         }

@@ -73,6 +73,35 @@ async function kaswareSendKaspa(address, sompi, options) {
   return await bridgeCall('kasware:sendKaspa', { address, sompi, options });
 }
 
+// Kasware (and other wallets) return txid in various shapes — string, object,
+// JSON-wrapped string, with/without "0x" prefix. Normalize to lowercase hex.
+function normalizeTxid(raw) {
+  if (raw == null) return '';
+  if (typeof raw === 'string') {
+    let s = raw.trim();
+    // Strip outer quotes if Kasware double-encoded
+    if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+      s = s.slice(1, -1);
+    }
+    // Try parsing as JSON in case it's a stringified object/array
+    try {
+      const parsed = JSON.parse(s);
+      if (typeof parsed !== 'string') return normalizeTxid(parsed);
+      s = parsed;
+    } catch { /* not JSON, plain string */ }
+    return s.replace(/^0x/i, '').toLowerCase();
+  }
+  if (Array.isArray(raw)) {
+    return raw.length > 0 ? normalizeTxid(raw[0]) : '';
+  }
+  if (typeof raw === 'object') {
+    for (const key of ['txid', 'id', 'tx', 'transactionId', 'transaction_id', 'hash', 'txId']) {
+      if (raw[key]) return normalizeTxid(raw[key]);
+    }
+  }
+  return String(raw);
+}
+
 // ─── observer + injection ─────────────────────────────────────────────────
 function init() {
   console.log('[KasTip] content script active on', location.hostname);
@@ -291,12 +320,13 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
       renderQrPane(modal, body, handle, init);
       return;
     }
-    let txid;
+    let rawTxid;
     try {
       const accs = await kaswareRequestAccounts();
       if (!accs || accs.length === 0) throw new Error('No wallet account');
       const sompi = Math.floor(amt * SOMPI_PER_KAS);
-      txid = await kaswareSendKaspa(init.receiver_address, sompi, { payload: init.payload });
+      rawTxid = await kaswareSendKaspa(init.receiver_address, sompi, { payload: init.payload });
+      console.log('[KasTip] raw txid from kasware:', JSON.stringify(rawTxid));
     } catch (e) {
       if (e.message === 'NO_KASWARE') {
         renderQrPane(modal, body, handle, init);
@@ -306,12 +336,17 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
       return;
     }
 
+    const txid = normalizeTxid(rawTxid);
+    console.log('[KasTip] normalized txid:', txid, 'length:', txid.length);
+
     // 4) confirm
     try {
       const conf = (await bg({ type: 'api:tip-confirm', body: { tip_id: init.tip_id, txid } })).data;
       renderSuccessPane(modal, body, handle, amt, txid, conf, tweetUrl);
     } catch (e) {
-      showErr('Sent but confirm failed: ' + e.message);
+      showErr('Sent but confirm failed: ' + e.message
+        + ' | raw=' + JSON.stringify(rawTxid).slice(0, 80)
+        + ' | normalized=' + txid.slice(0, 16) + '… (' + txid.length + ' chars)');
     }
   });
 
