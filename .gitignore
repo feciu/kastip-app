@@ -22,3 +22,4 @@ composer.lock
 # Build
 node_modules/
 dist/
+extension/*.zip
