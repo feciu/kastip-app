@@ -40,9 +40,9 @@ $r->get('/api/auth/whoami', function () {
 });
 
 // ─── users ────────────────────────────────────────────────────────────────
-// $r->get('/api/users/me',           fn() => \KasTip\Api\UsersMe::handle());
+$r->get('/api/users/me',           fn() => \KasTip\Api\UsersMe::handle());
+$r->post('/api/users/register',    fn() => \KasTip\Api\UsersRegister::handle());
 // $r->put('/api/users/me/settings',  fn() => \KasTip\Api\UsersMeSettings::handle());
-// $r->post('/api/users/register',    fn() => \KasTip\Api\UsersRegister::handle());
 // $r->get('/api/users/lookup',       fn() => \KasTip\Api\UsersLookup::handle());
 
 // ─── tips ─────────────────────────────────────────────────────────────────
@@ -52,7 +52,8 @@ $r->get('/api/auth/whoami', function () {
 // $r->get('/api/tips/received',    fn() => \KasTip\Api\TipsReceived::handle());
 // $r->get('/api/tips/{id}/status', fn($p) => \KasTip\Api\TipStatus::handle((int) $p['id']));
 
-// ─── public profile pages (rendered server-side) ──────────────────────────
+// ─── web pages (server-rendered HTML) ─────────────────────────────────────
+$r->get('/onboard/address', fn() => \KasTip\Web\Onboard::renderAddressForm());
 // $r->get('/u/{handle}', fn($p) => \KasTip\Web\Profile::render($p['handle']));
 
 // ─── landing ──────────────────────────────────────────────────────────────
