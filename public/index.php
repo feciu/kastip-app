@@ -55,7 +55,7 @@ $r->get('/api/tips/{id}/status',   fn($p) => \KasTip\Api\TipsList::status((int) 
 // ─── web pages (server-rendered HTML) ─────────────────────────────────────
 $r->get('/onboard/address', fn() => \KasTip\Web\Onboard::renderAddressForm());
 $r->get('/dashboard',       fn() => \KasTip\Web\Dashboard::render());
-// $r->get('/u/{handle}', fn($p) => \KasTip\Web\Profile::render($p['handle']));
+$r->get('/u/{handle}',      fn($p) => \KasTip\Web\Profile::render($p['handle']));
 
 // ─── landing ──────────────────────────────────────────────────────────────
 $r->get('/', fn() => \KasTip\Web\Landing::render());

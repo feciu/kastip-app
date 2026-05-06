@@ -188,6 +188,17 @@ final class XOauth
         $userRow = $stmt->fetch(PDO::FETCH_ASSOC);
         $userId = (int) $userRow['id'];
 
+        // ─── viral conversion tracking ─────────────────────────────────────
+        // If anyone tried to tip this @handle while it was unregistered, mark
+        // those invitation rows as converted. Best-effort, non-fatal.
+        try {
+            $pdo->prepare("
+                UPDATE invitations
+                SET converted_user_id = :uid, converted_at = NOW()
+                WHERE invitee_x_username = :h AND converted_user_id IS NULL
+            ")->execute(['uid' => $userId, 'h' => $xUsername]);
+        } catch (\Throwable $e) { /* non-fatal */ }
+
         // ─── create session ────────────────────────────────────────────────
         $token = Session::create($userId, $clientKind, $extensionId);
 
