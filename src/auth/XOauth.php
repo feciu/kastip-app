@@ -7,7 +7,7 @@ use KasTip\App;
 use PDO;
 
 /**
- * XOauth — OAuth 2.0 PKCE flow for X (Twitter).
+ * XOauth — OAuth 2.0 PKCE flow for X.
  *
  * Endpoints:
  *   GET /api/auth/x/start[?from=<path>][&client_kind=web|extension][&ext_id=<id>]
@@ -27,7 +27,7 @@ use PDO;
  */
 final class XOauth
 {
-    private const AUTHORIZE_URL = 'https://twitter.com/i/oauth2/authorize';
+    private const AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
     private const TOKEN_URL     = 'https://api.x.com/2/oauth2/token';
     private const ME_URL        = 'https://api.x.com/2/users/me';
     private const STATE_TTL_SECONDS = 600; // 10 min
