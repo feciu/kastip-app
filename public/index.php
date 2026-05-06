@@ -54,20 +54,10 @@ $r->get('/api/tips/{id}/status',   fn($p) => \KasTip\Api\TipsList::status((int) 
 
 // ─── web pages (server-rendered HTML) ─────────────────────────────────────
 $r->get('/onboard/address', fn() => \KasTip\Web\Onboard::renderAddressForm());
+$r->get('/dashboard',       fn() => \KasTip\Web\Dashboard::render());
 // $r->get('/u/{handle}', fn($p) => \KasTip\Web\Profile::render($p['handle']));
 
 // ─── landing ──────────────────────────────────────────────────────────────
-$r->get('/', function () {
-    // Until we build the real landing page, fall through to static index.html.
-    // nginx will serve it directly when the request doesn't reach PHP, but if
-    // someone hits it through index.php (e.g. /?foo=bar), give them the same.
-    $html = __DIR__ . '/index.html';
-    if (is_file($html)) {
-        header('Content-Type: text/html; charset=utf-8');
-        readfile($html);
-        return;
-    }
-    KasTip\App::jsonResponse(['ok' => true, 'note' => 'KasTip is live']);
-});
+$r->get('/', fn() => \KasTip\Web\Landing::render());
 
 $r->dispatch();
