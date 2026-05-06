@@ -40,17 +40,17 @@ $r->get('/api/auth/whoami', function () {
 });
 
 // ─── users ────────────────────────────────────────────────────────────────
-$r->get('/api/users/me',           fn() => \KasTip\Api\UsersMe::handle());
-$r->post('/api/users/register',    fn() => \KasTip\Api\UsersRegister::handle());
-// $r->put('/api/users/me/settings',  fn() => \KasTip\Api\UsersMeSettings::handle());
-// $r->get('/api/users/lookup',       fn() => \KasTip\Api\UsersLookup::handle());
+$r->get('/api/users/me',          fn() => \KasTip\Api\UsersMe::handle());
+$r->put('/api/users/me/settings', fn() => \KasTip\Api\UsersMeSettings::handle());
+$r->post('/api/users/register',   fn() => \KasTip\Api\UsersRegister::handle());
+$r->get('/api/users/lookup',      fn() => \KasTip\Api\UsersLookup::handle());
 
 // ─── tips ─────────────────────────────────────────────────────────────────
-// $r->post('/api/tips/initiate',   fn() => \KasTip\Api\TipsInitiate::handle());
-// $r->post('/api/tips/confirm',    fn() => \KasTip\Api\TipsConfirm::handle());
-// $r->get('/api/tips/sent',        fn() => \KasTip\Api\TipsSent::handle());
-// $r->get('/api/tips/received',    fn() => \KasTip\Api\TipsReceived::handle());
-// $r->get('/api/tips/{id}/status', fn($p) => \KasTip\Api\TipStatus::handle((int) $p['id']));
+$r->post('/api/tips/initiate',     fn() => \KasTip\Api\TipsInitiate::handle());
+$r->post('/api/tips/confirm',      fn() => \KasTip\Api\TipsConfirm::handle());
+$r->get('/api/tips/sent',          fn() => \KasTip\Api\TipsList::sent());
+$r->get('/api/tips/received',      fn() => \KasTip\Api\TipsList::received());
+$r->get('/api/tips/{id}/status',   fn($p) => \KasTip\Api\TipsList::status((int) $p['id']));
 
 // ─── web pages (server-rendered HTML) ─────────────────────────────────────
 $r->get('/onboard/address', fn() => \KasTip\Web\Onboard::renderAddressForm());
