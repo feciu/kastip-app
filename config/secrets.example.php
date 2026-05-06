@@ -22,9 +22,15 @@ return [
     // X (Twitter) OAuth — fill in after registering app at developer.x.com
     'x_oauth' => [
         'client_id'     => 'CHANGE_ME',
-        'client_secret' => 'CHANGE_ME',  // for confidential clients; public client may not need it
+        'client_secret' => 'CHANGE_ME',  // ignored for Public clients (Native App / SPA)
         'redirect_uri'  => 'https://kastip.app/api/auth/x/callback',
-        'scope'         => 'users.read',  // minimal — NIE 'tweet.read users.read'
+        'scope'         => 'users.read',  // minimal — NOT 'tweet.read users.read'
+        // X Dev Portal "Type of App":
+        //   Native App / Single-page App  →  public_client = true  (PKCE only, NO Basic Auth)
+        //   Web App, Automated App or Bot →  public_client = false (PKCE + Basic Auth with secret)
+        // Sending Basic Auth on a Public client makes X issue an App-only token,
+        // which then gets 403 on /users/me. Match this flag to your portal config.
+        'public_client' => true,
     ],
 
     // 32-byte hex random — used to sign session tokens / PKCE state.

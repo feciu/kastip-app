@@ -28,8 +28,8 @@ use PDO;
 final class XOauth
 {
     private const AUTHORIZE_URL = 'https://twitter.com/i/oauth2/authorize';
-    private const TOKEN_URL     = 'https://api.twitter.com/2/oauth2/token';
-    private const ME_URL        = 'https://api.twitter.com/2/users/me';
+    private const TOKEN_URL     = 'https://api.x.com/2/oauth2/token';
+    private const ME_URL        = 'https://api.x.com/2/users/me';
     private const STATE_TTL_SECONDS = 600; // 10 min
 
     /**
@@ -123,23 +123,37 @@ final class XOauth
 
         // ─── exchange code for access_token ─────────────────────────────────
         $cfg = App::config('x_oauth');
+        $isPublic = (bool) ($cfg['public_client'] ?? true);
+        $extraHeaders = [];
+        if (!$isPublic && !empty($cfg['client_secret'])) {
+            // Confidential client: Basic Auth with client_id:client_secret
+            $extraHeaders[] = 'Authorization: Basic '
+                . base64_encode("{$cfg['client_id']}:{$cfg['client_secret']}");
+        }
+        // Public client (PKCE-only): NO Basic Auth, just client_id in body.
         $tokenResp = self::httpPost(self::TOKEN_URL, [
             'grant_type'    => 'authorization_code',
             'code'          => $code,
             'redirect_uri'  => $cfg['redirect_uri'],
             'code_verifier' => $verifier,
             'client_id'     => $cfg['client_id'],
-        ], [
-            // Confidential client: Basic auth header. Public client without secret: omit.
-            !empty($cfg['client_secret'])
-                ? 'Authorization: Basic ' . base64_encode("{$cfg['client_id']}:{$cfg['client_secret']}")
-                : null,
-        ]);
+        ], $extraHeaders);
         if ($tokenResp === null || empty($tokenResp['access_token'])) {
             error_log('[XOauth] token exchange failed: ' . json_encode($tokenResp));
             App::abort(502, 'Token exchange failed.');
         }
         $accessToken = $tokenResp['access_token'];
+
+        // DEBUG: log token shape (mask the token itself)
+        error_log(sprintf(
+            '[XOauth] token OK: type=%s expires_in=%s scope=%s token_prefix=%s...%s len=%d',
+            $tokenResp['token_type'] ?? 'unknown',
+            $tokenResp['expires_in'] ?? 'unknown',
+            $tokenResp['scope'] ?? '<none>',
+            substr($accessToken, 0, 4),
+            substr($accessToken, -4),
+            strlen($accessToken)
+        ));
 
         // ─── fetch /users/me ───────────────────────────────────────────────
         $me = self::httpGet(self::ME_URL . '?user.fields=profile_image_url,name', [
@@ -272,21 +286,32 @@ HTML;
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER         => true,                            // include response headers in body
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT        => 10,
             CURLOPT_HTTPHEADER     => array_merge(['Accept: application/json'], $extraHeaders),
             CURLOPT_USERAGENT      => 'KasTip/1.0',
         ]);
-        $body = curl_exec($ch);
+        $raw = curl_exec($ch);
         $err = curl_error($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
-        if ($body === false || $err !== '') {
+
+        if ($raw === false || $err !== '') {
             error_log("[XOauth] curl error: $err");
             return null;
         }
+        $headers = substr((string) $raw, 0, $headerSize);
+        $body = substr((string) $raw, $headerSize);
+
         if ($status >= 400) {
-            error_log("[XOauth] GET $url → $status: " . substr((string) $body, 0, 500));
+            $debug = "[" . gmdate('c') . "] GET $url → $status\n"
+                   . "--- response headers ---\n$headers"
+                   . "--- response body ---\n$body\n"
+                   . "============================================\n\n";
+            @file_put_contents('/tmp/kastip-xoauth-debug.log', $debug, FILE_APPEND);
+            error_log("[XOauth] GET $url → $status (full response in /tmp/kastip-xoauth-debug.log)");
             return null;
         }
         $decoded = json_decode((string) $body, true);
