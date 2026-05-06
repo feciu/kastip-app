@@ -5,7 +5,8 @@
   "description": "Tip Kaspa (KAS) to anyone on X with one click. Non-custodial, peer-to-peer, no fees.",
   "permissions": [
     "storage",
-    "identity"
+    "identity",
+    "cookies"
   ],
   "host_permissions": [
     "https://x.com/*",

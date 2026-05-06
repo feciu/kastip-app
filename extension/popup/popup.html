@@ -9,11 +9,25 @@
 <div id="app">
   <div class="logo">KasTip</div>
 
-  <!-- signed-out state -->
+  <!-- signed-out state (no web session detected) -->
   <div id="state-anon" style="display:none">
     <p class="lead">Sign in to start tipping KAS to anyone on X.</p>
     <button id="signin-btn" class="btn btn-primary">Connect X</button>
     <p class="hint">Non-custodial. We never hold your KAS.</p>
+  </div>
+
+  <!-- signed-out but kastip.app cookie detected — offer to link -->
+  <div id="state-anon-with-web" style="display:none">
+    <p class="lead">You're signed in on <strong>kastip.app</strong> as:</p>
+    <div class="profile">
+      <img id="web-avatar" alt="">
+      <div class="meta">
+        <strong id="web-display-name"></strong>
+        <span id="web-handle"></span>
+      </div>
+    </div>
+    <button id="link-web-btn" class="btn btn-primary">Use this account</button>
+    <button id="connect-different-btn" class="btn btn-link">Connect a different X account</button>
   </div>
 
   <!-- signed-in state -->

@@ -22,9 +22,10 @@ $r->get('/api/health', function () {
 });
 
 // ─── auth ─────────────────────────────────────────────────────────────────
-$r->get('/api/auth/x/start',    fn() => \KasTip\Auth\XOauth::start());
-$r->get('/api/auth/x/callback', fn() => \KasTip\Auth\XOauth::callback());
-$r->post('/api/auth/logout',    fn() => \KasTip\Auth\Session::logout());
+$r->get('/api/auth/x/start',         fn() => \KasTip\Auth\XOauth::start());
+$r->get('/api/auth/x/callback',      fn() => \KasTip\Auth\XOauth::callback());
+$r->post('/api/auth/logout',         fn() => \KasTip\Auth\Session::logout());
+$r->post('/api/auth/extension-link', fn() => \KasTip\Api\AuthExtensionLink::handle());
 
 // Quick "who am I" (sanity check that session/bearer works end-to-end)
 $r->get('/api/auth/whoami', function () {

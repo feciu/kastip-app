@@ -68,6 +68,68 @@ async function logout() {
   await clearAuth();
 }
 
+// ─── auto-link with web (kastip.app) cookie session ──────────────────────
+//
+// If the user is already signed into kastip.app in this browser, the popup
+// can offer to link the extension to that same KasTip account WITHOUT going
+// through OAuth (which would silently bind to whatever X session happens to
+// be active in the browser).
+//
+// Flow:
+//   1. chrome.cookies.get to detect HTTPOnly kastip_session cookie (extension
+//      cookie permission can read HTTPOnly; web JS cannot — that's the point).
+//   2. fetch /api/auth/whoami with credentials:'include' to verify cookie is
+//      still valid; if so, fetch /api/users/me to display avatar/handle.
+//   3. User clicks "Use this account" → POST /api/auth/extension-link with
+//      credentials:'include'. Backend mints a fresh extension-kind session
+//      and returns its token + user. Save both.
+async function detectWebSession() {
+  try {
+    const cookie = await chrome.cookies.get({ url: KASTIP_BASE, name: 'kastip_session' });
+    if (!cookie || !cookie.value) return { hasWebSession: false };
+
+    // Cookie present — verify it's still authenticated, fetch user info.
+    const whoamiResp = await fetch(`${KASTIP_API}/auth/whoami`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const whoami = await whoamiResp.json().catch(() => ({}));
+    if (!whoami.authenticated) return { hasWebSession: false };
+
+    const meResp = await fetch(`${KASTIP_API}/users/me`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!meResp.ok) return { hasWebSession: true, user: null };
+    const me = await meResp.json();
+    return {
+      hasWebSession: true,
+      user: {
+        x_username: me.x_username,
+        x_display_name: me.x_display_name,
+        x_avatar_url: me.x_avatar_url,
+      },
+    };
+  } catch (e) {
+    console.warn('[KasTip] detectWebSession failed:', e);
+    return { hasWebSession: false };
+  }
+}
+
+async function linkViaWeb() {
+  const r = await fetch(`${KASTIP_API}/auth/extension-link`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || !data.ok) {
+    throw new Error(data.message || `link failed (${r.status})`);
+  }
+  await setToken(data.token);
+  await setCachedUser(data.user);
+  return data.user;
+}
+
 // ─── API fetch wrapper (Bearer auth) ──────────────────────────────────────
 async function apiFetch(method, path, body) {
   const token = await getToken();
@@ -103,6 +165,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'auth:start': {
           await startAuthFlow();
           const user = await getCachedUser();
+          sendResponse({ ok: true, user });
+          return;
+        }
+        case 'auth:check-web-session': {
+          const r = await detectWebSession();
+          sendResponse({ ok: true, ...r });
+          return;
+        }
+        case 'auth:link-via-web': {
+          const user = await linkViaWeb();
           sendResponse({ ok: true, user });
           return;
         }

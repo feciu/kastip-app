@@ -104,6 +104,24 @@ final class Session
     }
 
     /**
+     * Require auth via cookie (web) channel specifically. Used by endpoints
+     * that should NOT be callable with a Bearer token (e.g. extension-link,
+     * which mints new bearers — chaining bearer→bearer would let a leaked
+     * token mint more tokens).
+     *
+     * @return array{id:int, user_id:int, session_token:string, client_kind:string}
+     */
+    public static function requireCookieAuth(): array
+    {
+        $session = self::requireAuth();
+        $cookieToken = $_COOKIE[self::COOKIE_NAME] ?? '';
+        if ($session['client_kind'] !== 'web' || !hash_equals($session['session_token'], $cookieToken)) {
+            App::abort(403, 'This action requires a cookie session (sign in at https://kastip.app first).', 'cookie_auth_required');
+        }
+        return $session;
+    }
+
+    /**
      * Destroy session by token. Clears cookie.
      */
     public static function destroy(string $token): void

@@ -13,7 +13,7 @@ function bg(msg) {
 }
 
 function show(stateId) {
-  ['state-anon', 'state-signed', 'state-loading'].forEach((id) => {
+  ['state-anon', 'state-anon-with-web', 'state-signed', 'state-loading'].forEach((id) => {
     document.getElementById(id).style.display = (id === stateId) ? '' : 'none';
   });
 }
@@ -52,21 +52,33 @@ async function init() {
   show('state-loading');
   try {
     const status = await bg({ type: 'auth:status' });
-    if (!status.signedIn) {
-      show('state-anon');
+    if (status.signedIn) {
+      if (status.user) {
+        await renderSigned(status.user);
+      } else {
+        const r = await bg({ type: 'auth:refresh-user' });
+        await renderSigned(r.user);
+      }
       return;
     }
-    if (status.user) {
-      await renderSigned(status.user);
+    // Not signed in — check if we can offer auto-link with web session
+    const web = await bg({ type: 'auth:check-web-session' });
+    if (web.hasWebSession && web.user) {
+      renderAnonWithWebSession(web.user);
     } else {
-      // Refresh from server
-      const r = await bg({ type: 'auth:refresh-user' });
-      await renderSigned(r.user);
+      show('state-anon');
     }
   } catch (err) {
     show('state-anon');
     console.warn('[KasTip popup] init error:', err.message);
   }
+}
+
+function renderAnonWithWebSession(user) {
+  show('state-anon-with-web');
+  $('#web-avatar').src = user.x_avatar_url || '';
+  $('#web-display-name').textContent = user.x_display_name || ('@' + user.x_username);
+  $('#web-handle').textContent = '@' + user.x_username;
 }
 
 $('#signin-btn').addEventListener('click', async () => {
@@ -79,6 +91,32 @@ $('#signin-btn').addEventListener('click', async () => {
   } catch (err) {
     btn.disabled = false;
     btn.textContent = 'Connect X';
+    alert('Sign-in failed: ' + err.message);
+  }
+});
+
+$('#link-web-btn').addEventListener('click', async () => {
+  const btn = $('#link-web-btn');
+  btn.disabled = true;
+  btn.textContent = 'Linking…';
+  try {
+    const r = await bg({ type: 'auth:link-via-web' });
+    await renderSigned(r.user);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Use this account';
+    alert('Link failed: ' + err.message);
+  }
+});
+
+$('#connect-different-btn').addEventListener('click', async () => {
+  const btn = $('#connect-different-btn');
+  btn.disabled = true;
+  try {
+    const r = await bg({ type: 'auth:start' });
+    await renderSigned(r.user);
+  } catch (err) {
+    btn.disabled = false;
     alert('Sign-in failed: ' + err.message);
   }
 });
