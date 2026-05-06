@@ -536,19 +536,48 @@ function renderSuccessPane(modal, body, handle, amt, txid, conf, tweetUrl) {
 }
 
 // ─── auto-reply pre-fill on X ─────────────────────────────────────────────
-// X's reply box is a React contenteditable. document.execCommand('insertText')
-// works but `\n` characters are silently truncated — anything after the first
-// newline gets dropped. So we insert each line separately with insertParagraph
-// (which dispatches the right input events for React to sync state).
+// X's reply box is a React contenteditable. Simple approaches all have issues:
+//   - execCommand('insertText', '\n')  → silently truncates after \n
+//   - execCommand('insertParagraph')   → wraps content in <p> which X may
+//                                         interpret as new-tweet-in-thread
+//                                         and drop subsequent text
+// Best technique: paste simulation. X has a real paste handler that knows
+// how to render multi-line plain text correctly. Fallback to insertHTML
+// with <br> if paste event isn't honored.
 function prefillReply(lines) {
   const ta = document.querySelector(SELECTORS.replyTextarea);
   if (!ta) return false;
+  const text = (Array.isArray(lines) ? lines : [String(lines)]).join('\n');
   ta.focus();
-  const arr = Array.isArray(lines) ? lines : String(lines).split('\n');
-  for (let i = 0; i < arr.length; i++) {
-    if (i > 0) document.execCommand('insertParagraph');
-    document.execCommand('insertText', false, arr[i]);
+
+  // Try paste simulation first
+  try {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', text);
+    const ev = new ClipboardEvent('paste', {
+      clipboardData: dt,
+      bubbles: true,
+      cancelable: true,
+    });
+    const handled = !ta.dispatchEvent(ev);
+    // dispatchEvent returns false if any handler called preventDefault — that
+    // means X's handler took over (success). If true, X ignored it; fallback.
+    if (handled) {
+      console.log('[KasTip] reply pre-fill: paste-simulation succeeded');
+      return true;
+    }
+  } catch (e) {
+    console.warn('[KasTip] paste simulation threw:', e);
   }
+
+  // Fallback: insertHTML with <br> for line breaks
+  console.log('[KasTip] reply pre-fill: falling back to insertHTML');
+  const escapeForHtml = (s) => s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const html = text.split('\n').map(escapeForHtml).join('<br>');
+  document.execCommand('insertHTML', false, html);
   return true;
 }
 
