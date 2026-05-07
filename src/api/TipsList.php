@@ -44,11 +44,16 @@ final class TipsList
         $session = Session::requireAuth();
 
         $stmt = App::db()->prepare("
-            SELECT id, sender_user_id, receiver_user_id, receiver_x_username,
-                   sender_kaspa_address, receiver_kaspa_address,
-                   amount_kas, tweet_url, message, status, txid,
-                   initiated_at, confirmed_at
-            FROM tips WHERE id = :id LIMIT 1
+            SELECT t.id, t.sender_user_id, t.receiver_user_id, t.receiver_x_username,
+                   t.sender_kaspa_address, t.receiver_kaspa_address,
+                   t.amount_kas, t.tweet_url, t.message, t.status, t.txid,
+                   t.initiated_at, t.confirmed_at,
+                   us.x_username AS sender_x_username,
+                   us.x_display_name AS sender_x_display_name,
+                   us.x_avatar_url AS sender_x_avatar_url
+            FROM tips t
+            LEFT JOIN users us ON t.sender_user_id = us.id
+            WHERE t.id = :id LIMIT 1
         ");
         $stmt->execute(['id' => $tipId]);
         $tip = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -69,18 +74,22 @@ final class TipsList
         $limit = self::clampLimit($_GET['limit'] ?? null);
         $before = isset($_GET['before']) ? (int) $_GET['before'] : 0;
 
-        $sql = "SELECT id, sender_user_id, receiver_user_id, receiver_x_username,
-                       sender_kaspa_address, receiver_kaspa_address,
-                       amount_kas, tweet_url, message, status, txid,
-                       initiated_at, confirmed_at
-                FROM tips
-                WHERE $userColumn = :uid";
+        $sql = "SELECT t.id, t.sender_user_id, t.receiver_user_id, t.receiver_x_username,
+                       t.sender_kaspa_address, t.receiver_kaspa_address,
+                       t.amount_kas, t.tweet_url, t.message, t.status, t.txid,
+                       t.initiated_at, t.confirmed_at,
+                       us.x_username AS sender_x_username,
+                       us.x_display_name AS sender_x_display_name,
+                       us.x_avatar_url AS sender_x_avatar_url
+                FROM tips t
+                LEFT JOIN users us ON t.sender_user_id = us.id
+                WHERE t.$userColumn = :uid";
         $params = ['uid' => $userId];
         if ($before > 0) {
-            $sql .= " AND id < :before";
+            $sql .= " AND t.id < :before";
             $params['before'] = $before;
         }
-        $sql .= " ORDER BY id DESC LIMIT $limit";
+        $sql .= " ORDER BY t.id DESC LIMIT $limit";
 
         $stmt = App::db()->prepare($sql);
         $stmt->execute($params);
@@ -102,6 +111,9 @@ final class TipsList
         return [
             'id'                  => (int) $r['id'],
             'sender_user_id'      => (int) $r['sender_user_id'],
+            'sender_x_username'   => $r['sender_x_username'] ?? null,
+            'sender_x_display_name' => $r['sender_x_display_name'] ?? null,
+            'sender_x_avatar_url' => $r['sender_x_avatar_url'] ?? null,
             'receiver_user_id'    => $r['receiver_user_id'] !== null ? (int) $r['receiver_user_id'] : null,
             'receiver_x_username' => $r['receiver_x_username'],
             'sender_kaspa_address'   => $r['sender_kaspa_address'],

@@ -316,7 +316,7 @@ async function loadMe(){
 
 // ─── tip lists ──────────────────────────────────
 function tipRowHtml(tip, kind){
-  const otherHandle = kind === 'sent' ? tip.receiver_x_username : (tip.sender_handle || '?');
+  const otherHandle = kind === 'sent' ? tip.receiver_x_username : (tip.sender_x_username || '?');
   const arrow = kind === 'sent' ? '→' : '←';
   const txLink = tip.txid
     ? `<a class="tx-link" href="https://explorer.kaspa.org/txs/${tip.txid}" target="_blank" rel="noopener">tx ↗</a>`
