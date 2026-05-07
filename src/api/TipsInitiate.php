@@ -39,7 +39,7 @@ use KasTip\Lib\RateLimit;
  *     "invitation": {
  *       "invite_token": "abc123def456...",
  *       "invite_url": "https://kastip.app/u/janek_xyz?invite=abc123...",
- *       "suggested_reply": "Hej @janek_xyz! Próbowałem wysłać Ci 5 KAS via @kastipapp ⚡ ..."
+ *       "suggested_reply": "Hey @janek_xyz! Tried to tip you 5 KAS via @kastipapp ⚡ ..."
  *     }
  *   }
  */
@@ -210,7 +210,7 @@ final class TipsInitiate
 
         $inviteUrl = App::baseUrl() . "/u/$receiverHandle?invite=$token";
         $reply = sprintf(
-            "Hej @%s! Próbowałem wysłać Ci %s KAS via @kastipapp ⚡ — załóż konto żeby je odbierać: %s",
+            "Hey @%s! Tried to tip you %s KAS via @kastipapp ⚡ — sign up to claim: %s",
             $receiverHandle,
             rtrim(rtrim(number_format($amountKas, 4, '.', ''), '0'), '.'),
             $inviteUrl
