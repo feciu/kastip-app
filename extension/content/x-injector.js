@@ -429,8 +429,8 @@ async function renderQrPane(modal, body, handle, init) {
     const fakeInfo = { kaspa_address: init.receiver_address };
     renderRegisteredPane(modal, body, handle, fakeInfo, null);
   });
-  // QR — using api.qrserver.com. Hand-rolled qr.js had subtle bugs (real
-  // wallets like Kaspium/Tangem couldn't decode it). qrserver is battle-tested.
+  // QR — using qrcodejs@1.0.0 (loaded as content_script before this file).
+  // Battle-tested library, same one used in kaspablocks.com payment flow.
   // Two URI variants:
   //   full:  kaspa:{addr}?amount={KAS}&label=tip-to-{handle}    — Kasware-friendly
   //   plain: kaspa:{addr}                                       — works in every wallet
@@ -441,10 +441,19 @@ async function renderQrPane(modal, body, handle, init) {
   function renderQr(uri) {
     currentUri = uri;
     const box = body.querySelector('#kastip-qr');
-    const url = 'https://api.qrserver.com/v1/create-qr-code/?'
-      + 'data=' + encodeURIComponent(uri)
-      + '&size=200x200&margin=8&format=svg&ecc=M&color=000000&bgcolor=ffffff';
-    box.innerHTML = `<img src="${url}" width="200" height="200" alt="QR" style="display:block">`;
+    box.innerHTML = '';  // clear — qrcodejs appends instead of replacing
+    if (typeof QRCode === 'undefined') {
+      box.textContent = 'QR library not loaded';
+      return;
+    }
+    new QRCode(box, {
+      text: uri,
+      width: 220,
+      height: 220,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
     body.querySelector('#kastip-uri').textContent = uri;
   }
   renderQr(fullUri);

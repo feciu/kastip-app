@@ -11,8 +11,7 @@
   "host_permissions": [
     "https://x.com/*",
     "https://twitter.com/*",
-    "https://kastip.app/*",
-    "https://api.qrserver.com/*"
+    "https://kastip.app/*"
   ],
   "content_scripts": [
     {
@@ -23,7 +22,7 @@
     },
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
-      "js": ["content/x-injector.js"],
+      "js": ["lib/qrcode.min.js", "content/x-injector.js"],
       "css": ["content/x-injector.css"],
       "run_at": "document_idle"
     }
