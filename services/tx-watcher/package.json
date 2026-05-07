@@ -1,0 +1,17 @@
+{
+  "name": "kastip-tx-watcher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time Kaspa block subscriber that forwards KasTip-tagged transactions to the backend.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "kaspa-rpc-client": "^1.1.8"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
