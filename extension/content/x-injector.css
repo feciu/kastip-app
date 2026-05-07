@@ -446,3 +446,28 @@
   height: 14px;
   cursor: pointer;
 }
+
+.kastip-qr-amount-banner {
+  margin: .5rem 0 .85rem;
+  padding: .85rem 1rem;
+  background: linear-gradient(135deg, rgba(73,233,201,.08), rgba(43,184,156,.05));
+  border: 1px solid rgba(73,233,201,.3);
+  border-radius: 10px;
+  text-align: center;
+}
+.kastip-qr-amount-big {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #49e9c9;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'tnum';
+}
+.kastip-qr-amount-hint {
+  margin-top: .25rem;
+  font-size: .8rem;
+  color: #a8b1c2;
+  line-height: 1.4;
+}
+.kastip-qr-amount-hint strong {
+  color: #fcd34d;
+}

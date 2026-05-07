@@ -385,12 +385,16 @@ async function renderQrPane(modal, body, handle, init) {
     <button id="kastip-qr-back" class="kastip-link-btn" type="button">← Back</button>
     <p style="color:#71767b;margin:.5rem 0 .5rem">Scan with any Kaspa wallet (Kaspium, Tangem, KSPR, etc.). We'll auto-detect the transaction once it lands on-chain — typically within a few seconds.</p>
 
+    <div class="kastip-qr-amount-banner">
+      <div class="kastip-qr-amount-big">${init.amount_kas} KAS</div>
+      <div class="kastip-qr-amount-hint">Send <strong>exactly this amount</strong> — sending less will leave the tip unconfirmed.</div>
+    </div>
+
     <div class="kastip-qr-toggle">
       <label>
         <input type="checkbox" id="kastip-qr-amount" checked>
-        Include amount (${init.amount_kas} KAS) in QR
+        Include amount in QR (uncheck if your wallet ignores it)
       </label>
-      <p style="font-size:.74rem;color:#5a6378;margin-top:.2rem">If your wallet doesn't auto-fill the amount after scanning, untoggle and enter ${init.amount_kas} KAS manually.</p>
     </div>
 
     <div class="kastip-qr-wrap" id="kastip-qr"></div>
