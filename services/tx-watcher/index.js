@@ -36,6 +36,13 @@ let client = null;
 const watchedAddresses = new Set();
 let watchedRefreshTimer = null;
 
+// Heartbeat watchdog — Kaspa gRPC subscription occasionally goes silent
+// (zombie connection: TCP alive but stream stops emitting). If we haven't
+// seen ANY block notification for this long, restart the connection.
+const HEARTBEAT_TIMEOUT_MS = 90_000;  // 90s — Kaspa is ~1 block/sec, this is generous
+let lastBlockSeenAt = Date.now();
+let heartbeatTimer = null;
+
 // ─── helpers ──────────────────────────────────────────────────────────────
 function log(...args) {
   console.log('[' + new Date().toISOString() + ']', ...args);
@@ -103,6 +110,7 @@ async function refreshWatchedAddresses() {
 // The notification already carries full TX data (with verboseData), so we
 // don't need a follow-up getBlock round-trip.
 async function processBlockNotification(notif) {
+  lastBlockSeenAt = Date.now();  // heartbeat — any block notification counts
   const transactions = notif?.block?.transactions || [];
   if (transactions.length === 0) return;
 
@@ -167,6 +175,18 @@ async function startSubscription() {
   await refreshWatchedAddresses();
   if (watchedRefreshTimer) clearInterval(watchedRefreshTimer);
   watchedRefreshTimer = setInterval(refreshWatchedAddresses, 60_000);  // every 60s
+
+  // Heartbeat — if no block notifications arrive for HEARTBEAT_TIMEOUT_MS,
+  // assume the gRPC subscription died silently and force a full reconnect.
+  lastBlockSeenAt = Date.now();
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(() => {
+    const idle = Date.now() - lastBlockSeenAt;
+    if (idle > HEARTBEAT_TIMEOUT_MS) {
+      err(`heartbeat: no blocks for ${(idle/1000).toFixed(0)}s — assuming zombie subscription, exiting for systemd restart`);
+      process.exit(1);  // systemd Restart=always brings us back fresh
+    }
+  }, 30_000);
 }
 
 // ─── main ────────────────────────────────────────────────────────────────
