@@ -383,18 +383,36 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
 async function renderQrPane(modal, body, handle, init) {
   body.innerHTML = `
     <button id="kastip-qr-back" class="kastip-link-btn" type="button">← Back</button>
-    <p style="color:#71767b;margin:.5rem 0 .75rem">Scan with any Kaspa wallet, then paste the TXID below.</p>
+    <p style="color:#71767b;margin:.5rem 0 .75rem">Scan with any Kaspa wallet (Kaspium, Tangem, KSPR, etc.). We'll auto-detect the transaction once it lands on-chain — typically within a few seconds.</p>
     <div class="kastip-qr-wrap" id="kastip-qr"></div>
     <div class="kastip-uri-box" id="kastip-uri">${escapeHtml(init.qr_uri)}</div>
     <button id="kastip-copy-uri" class="kastip-secondary-btn">Copy URI</button>
-    <label for="kastip-txid" style="margin-top:1rem;display:block">After sending, paste TXID:</label>
-    <input type="text" id="kastip-txid" placeholder="abc123…" autocomplete="off" autocapitalize="none" spellcheck="false">
+
+    <div class="kastip-qr-waiting" id="kastip-waiting">
+      <span class="kastip-spinner"></span>
+      <span>Waiting for transaction…</span>
+    </div>
+
+    <details class="kastip-manual-fallback">
+      <summary>Wallet doesn't auto-detect? Paste TXID manually</summary>
+      <input type="text" id="kastip-txid" placeholder="abc123…" autocomplete="off" autocapitalize="none" spellcheck="false">
+      <button id="kastip-confirm" class="kastip-secondary-btn">Confirm tip</button>
+    </details>
     <div class="kastip-error" id="kastip-qr-err" style="display:none"></div>
-    <button id="kastip-confirm" class="kastip-send-btn">Confirm tip</button>
   `;
+  // Track polling so we can cancel on close/back/success.
+  let pollHandle = null;
+  let pollExpired = false;
+  const stopPolling = () => { if (pollHandle) { clearTimeout(pollHandle); pollHandle = null; } };
+
+  // Cancel polling if modal is removed (user closed it via X)
+  const observer = new MutationObserver(() => {
+    if (!document.body.contains(modal)) { stopPolling(); observer.disconnect(); }
+  });
+  observer.observe(document.body, { childList: true });
+
   body.querySelector('#kastip-qr-back').addEventListener('click', () => {
-    // Re-render registered amount pane. The pending tip in DB stays — it'll be
-    // garbage-collected eventually, no harm.
+    stopPolling();
     const fakeInfo = { kaspa_address: init.receiver_address };
     renderRegisteredPane(modal, body, handle, fakeInfo, null);
   });
@@ -407,7 +425,12 @@ async function renderQrPane(modal, body, handle, init) {
   }
 
   body.querySelector('#kastip-copy-uri').addEventListener('click', () => {
-    navigator.clipboard.writeText(init.qr_uri).then(() => alert('Copied!'));
+    navigator.clipboard.writeText(init.qr_uri).then(() => {
+      const btn = body.querySelector('#kastip-copy-uri');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    });
   });
 
   const errEl = body.querySelector('#kastip-qr-err');
@@ -421,12 +444,41 @@ async function renderQrPane(modal, body, handle, init) {
     }
     try {
       const conf = (await bg({ type: 'api:tip-confirm', body: { tip_id: init.tip_id, txid } })).data;
+      stopPolling();
       renderSuccessPane(modal, body, handle, init.amount_kas, txid, conf, null);
     } catch (e) {
       errEl.textContent = e.message;
       errEl.style.display = 'block';
     }
   });
+
+  // ─── auto-poll status — auto-detects foreign-wallet TX via tx-watcher ──
+  const POLL_INTERVAL_MS = 3000;
+  const POLL_TIMEOUT_MS = 5 * 60 * 1000;
+  const pollStart = Date.now();
+  const waitingEl = body.querySelector('#kastip-waiting');
+
+  const tick = async () => {
+    if (!document.body.contains(modal)) return;  // modal closed
+    if (Date.now() - pollStart > POLL_TIMEOUT_MS) {
+      pollExpired = true;
+      if (waitingEl) waitingEl.innerHTML = '<span style="color:#fca5a5">Timed out — try the manual TXID input below.</span>';
+      return;
+    }
+    try {
+      const r = await bg({ type: 'api:tip-status', tip_id: init.tip_id });
+      const tip = r.data;
+      if (tip && (tip.status === 'confirmed' || (tip.status === 'broadcast' && tip.txid))) {
+        observer.disconnect();
+        renderSuccessPane(modal, body, handle, init.amount_kas, tip.txid || '', { status: tip.status }, null);
+        return;
+      }
+    } catch (e) {
+      // Transient — keep polling
+    }
+    pollHandle = setTimeout(tick, POLL_INTERVAL_MS);
+  };
+  pollHandle = setTimeout(tick, POLL_INTERVAL_MS);
 }
 
 // ─── UNREGISTERED pane ────────────────────────────────────────────────────

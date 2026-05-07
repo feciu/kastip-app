@@ -30,6 +30,12 @@ if (!INTERNAL_TOKEN) {
 
 let client = null;
 
+// In-memory cache of receiver addresses we should watch (refreshed periodically).
+// Used to detect tipy from foreign wallets (Kaspium etc) that can't inject
+// our payload — we have to recognize them by output address instead.
+const watchedAddresses = new Set();
+let watchedRefreshTimer = null;
+
 // ─── helpers ──────────────────────────────────────────────────────────────
 function log(...args) {
   console.log('[' + new Date().toISOString() + ']', ...args);
@@ -70,6 +76,29 @@ async function postToBackend(body) {
   }
 }
 
+async function refreshWatchedAddresses() {
+  try {
+    const resp = await fetch(`${BACKEND_URL}/api/internal/watched-addresses`, {
+      headers: { 'Authorization': `Bearer ${INTERNAL_TOKEN}` },
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) {
+      err('refreshWatchedAddresses failed', resp.status, data);
+      return;
+    }
+    const next = new Set();
+    for (const entry of (data.addresses || [])) {
+      if (entry?.address) next.add(entry.address);
+    }
+    // Replace contents
+    watchedAddresses.clear();
+    for (const a of next) watchedAddresses.add(a);
+    log(`watched addresses: ${watchedAddresses.size}`);
+  } catch (e) {
+    err('refreshWatchedAddresses threw:', e.message);
+  }
+}
+
 // ─── core: scan transactions inline from blockAdded notification ──────────
 // The notification already carries full TX data (with verboseData), so we
 // don't need a follow-up getBlock round-trip.
@@ -78,27 +107,33 @@ async function processBlockNotification(notif) {
   if (transactions.length === 0) return;
 
   for (const tx of transactions) {
-    const payloadStr = hexToUtf8(tx.payload);
-    if (!payloadStr.startsWith(PAYLOAD_PREFIX)) continue;
-
     const txid = tx.verboseData?.transactionId;
-    if (!txid) {
-      err('TX with KasTip payload has no verboseData.transactionId — skipping');
-      continue;
-    }
+    if (!txid) continue;  // Coinbase or malformed; skip silently
 
     const outputs = (tx.outputs || []).map((o) => ({
       address: o.verboseData?.scriptPublicKeyAddress || null,
       amount: parseInt(o.amount ?? o.value ?? '0', 10),
     }));
 
-    log(`✨ KasTip TX ${txid.slice(0, 16)}… payload=${payloadStr}`);
-    postToBackend({ txid, payload: payloadStr, outputs })
-      .then((result) => {
-        if (result) {
-          log(`   backend → ${result.status}` + (result.tip_id ? ` (tip_id=${result.tip_id})` : ''));
-        }
-      });
+    const payloadStr = hexToUtf8(tx.payload);
+
+    // Path A: TX has our payload (Kasware-injected) — primary route.
+    if (payloadStr.startsWith(PAYLOAD_PREFIX)) {
+      log(`✨ KasTip TX (payload) ${txid.slice(0, 16)}… ${payloadStr}`);
+      postToBackend({ txid, payload: payloadStr, outputs })
+        .then((r) => r && log(`   → ${r.status}` + (r.tip_id ? ` (tip_id=${r.tip_id})` : '')));
+      continue;
+    }
+
+    // Path B: foreign-wallet TX — match if any output is to a watched address.
+    // Backend will look up matching pending tipy by address+amount+window.
+    if (watchedAddresses.size === 0) continue;
+    const hitAddr = outputs.find((o) => o.address && watchedAddresses.has(o.address));
+    if (!hitAddr) continue;
+
+    log(`✨ KasTip TX (address-match) ${txid.slice(0, 16)}… → ${hitAddr.address.slice(0, 14)}…`);
+    postToBackend({ txid, payload: '', outputs })
+      .then((r) => r && log(`   → ${r.status}` + (r.tip_id ? ` (tip_id=${r.tip_id})` : '')));
   }
 }
 
@@ -127,6 +162,11 @@ async function startSubscription() {
     }
   });
   log('subscribed. Waiting for blocks…');
+
+  // Initial fetch + periodic refresh of addresses to watch for foreign-wallet tips.
+  await refreshWatchedAddresses();
+  if (watchedRefreshTimer) clearInterval(watchedRefreshTimer);
+  watchedRefreshTimer = setInterval(refreshWatchedAddresses, 60_000);  // every 60s
 }
 
 // ─── main ────────────────────────────────────────────────────────────────

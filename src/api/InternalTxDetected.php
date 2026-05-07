@@ -30,7 +30,7 @@ final class InternalTxDetected
 {
     public static function handle(): void
     {
-        self::requireInternalAuth();
+        InternalAuth::require();
 
         $body = self::readJsonBody();
         $txid    = trim((string) ($body['txid'] ?? ''));
@@ -44,14 +44,27 @@ final class InternalTxDetected
             App::abort(400, 'outputs must be array.');
         }
 
-        $parsed = Payload::parseTip($payload);
-        if ($parsed === null) {
-            // Unknown / malformed / hash-mismatch payload — drop silently.
-            App::jsonResponse(['ok' => true, 'status' => 'rejected', 'reason' => 'payload_invalid']);
+        $pdo = App::db();
+        $parsed = $payload !== '' ? Payload::parseTip($payload) : null;
+
+        // Path A: KasTip-aware wallet (Kasware). Payload identifies tip directly.
+        if ($parsed !== null) {
+            self::confirmByTipId($parsed['tip_id'], $txid, $outputs, $pdo);
+            // confirmByTipId terminates with jsonResponse
+            return;
         }
 
-        $tipId = $parsed['tip_id'];
-        $pdo = App::db();
+        // Path B: foreign wallet (Kaspium, Tangem, etc.). Payload absent or
+        // unrecognized. Try to match by output address + amount against any
+        // pending/broadcast tip from the last 30 minutes.
+        self::confirmByAddressMatch($txid, $outputs, $pdo);
+    }
+
+    /**
+     * Path A — payload-driven match. Used when we own the wallet UX (Kasware).
+     */
+    private static function confirmByTipId(int $tipId, string $txid, array $outputs, \PDO $pdo): void
+    {
 
         $stmt = $pdo->prepare("
             SELECT id, sender_user_id, receiver_user_id, receiver_kaspa_address,
@@ -137,20 +150,104 @@ final class InternalTxDetected
         ]);
     }
 
-    private static function requireInternalAuth(): void
+    /**
+     * Path B — address-driven match. Used for foreign wallets that don't
+     * inject our payload (Kaspium, Tangem, etc.). Matches output address +
+     * amount against pending tipy in the last 30 minutes.
+     *
+     * Strategy:
+     *   - For each output in TX, see if it matches any pending tip's
+     *     receiver_kaspa_address with amount >= expected.
+     *   - First-match-wins: if multiple pending tipy could match, take
+     *     the oldest one (FIFO; user retried? earliest needs help most).
+     *   - Skip if any of these tipy were already confirmed with this txid
+     *     (idempotent).
+     */
+    private static function confirmByAddressMatch(string $txid, array $outputs, \PDO $pdo): void
     {
-        $expected = (string) App::config('internal_token', '');
-        if ($expected === '' || str_contains($expected, 'CHANGE_ME')) {
-            App::abort(503, 'internal_token not configured.');
+        // Build lookup map: address → output amount sompi
+        $byAddr = [];
+        foreach ($outputs as $out) {
+            $a = $out['address'] ?? null;
+            $amt = (int) ($out['amount'] ?? 0);
+            if ($a === null || $amt <= 0) continue;
+            $byAddr[$a] = max($byAddr[$a] ?? 0, $amt);
         }
-        $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-        if (stripos($auth, 'Bearer ') !== 0) {
-            App::abort(401, 'Bearer token required.');
+        if (empty($byAddr)) {
+            App::jsonResponse(['ok' => true, 'status' => 'rejected', 'reason' => 'no_outputs']);
         }
-        $token = trim(substr($auth, 7));
-        if (!hash_equals($expected, $token)) {
-            App::abort(403, 'Invalid internal token.');
+
+        // Idempotency guard: if any tip already has this txid, skip the match attempt entirely.
+        $stmt = $pdo->prepare("SELECT id, status FROM tips WHERE txid = :t LIMIT 1");
+        $stmt->execute(['t' => $txid]);
+        $existing = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($existing) {
+            App::jsonResponse(['ok' => true, 'status' => 'noop', 'reason' => 'txid_already_processed', 'tip_id' => (int) $existing['id']]);
         }
+
+        // Find candidate pending tipy — receiver_kaspa_address in our output map,
+        // status pending/broadcast, and recent (< 30 min). Oldest first (FIFO).
+        $placeholders = implode(',', array_fill(0, count($byAddr), '?'));
+        $sql = "
+            SELECT id, sender_user_id, receiver_user_id, receiver_kaspa_address,
+                   amount_kas, status
+            FROM tips
+            WHERE status IN ('pending', 'broadcast')
+              AND receiver_kaspa_address IN ($placeholders)
+              AND initiated_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+            ORDER BY id ASC
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(array_keys($byAddr));
+        $candidates = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        foreach ($candidates as $tip) {
+            $expectedSompi = (int) round((float) $tip['amount_kas'] * 100_000_000);
+            $actualSompi   = (int) ($byAddr[$tip['receiver_kaspa_address']] ?? 0);
+            if ($actualSompi < $expectedSompi) {
+                continue;
+            }
+            // Match — confirm + update totals
+            $pdo->beginTransaction();
+            try {
+                $pdo->prepare("
+                    UPDATE tips
+                    SET status='confirmed', txid=:t, confirmed_at=CURRENT_TIMESTAMP
+                    WHERE id=:id
+                ")->execute(['t' => $txid, 'id' => $tip['id']]);
+
+                $pdo->prepare("
+                    UPDATE users
+                    SET total_sent_kas = total_sent_kas + :amt,
+                        tip_count_sent = tip_count_sent + 1
+                    WHERE id = :id
+                ")->execute(['amt' => $tip['amount_kas'], 'id' => (int) $tip['sender_user_id']]);
+
+                if ($tip['receiver_user_id'] !== null) {
+                    $pdo->prepare("
+                        UPDATE users
+                        SET total_received_kas = total_received_kas + :amt,
+                            tip_count_received = tip_count_received + 1
+                        WHERE id = :id
+                    ")->execute(['amt' => $tip['amount_kas'], 'id' => (int) $tip['receiver_user_id']]);
+                }
+                $pdo->commit();
+            } catch (\Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+            error_log("[InternalTxDetected] address-match: tip {$tip['id']} confirmed via TX $txid (no payload)");
+            App::jsonResponse([
+                'ok' => true,
+                'status' => 'confirmed',
+                'tip_id' => (int) $tip['id'],
+                'txid'   => $txid,
+                'matched_by' => 'address_amount',
+            ]);
+        }
+
+        // No pending tip matched — TX was probably an unrelated transfer to one of our addresses.
+        App::jsonResponse(['ok' => true, 'status' => 'rejected', 'reason' => 'no_pending_tip_match']);
     }
 
     private static function readJsonBody(): array

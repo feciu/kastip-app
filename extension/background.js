@@ -205,6 +205,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true, data });
           return;
         }
+        case 'api:tip-status': {
+          const data = await apiFetch('GET', `/tips/${msg.tip_id}/status`);
+          sendResponse({ ok: true, data });
+          return;
+        }
         default:
           sendResponse({ ok: false, error: 'unknown_message_type' });
       }

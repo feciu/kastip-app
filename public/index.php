@@ -28,7 +28,8 @@ $r->post('/api/auth/logout',         fn() => \KasTip\Auth\Session::logout());
 $r->post('/api/auth/extension-link', fn() => \KasTip\Api\AuthExtensionLink::handle());
 
 // ─── internal (service-to-service, Bearer = internal_token) ──────────────
-$r->post('/api/internal/tx-detected', fn() => \KasTip\Api\InternalTxDetected::handle());
+$r->post('/api/internal/tx-detected',       fn() => \KasTip\Api\InternalTxDetected::handle());
+$r->get('/api/internal/watched-addresses',  fn() => \KasTip\Api\InternalWatchedAddresses::handle());
 
 // Quick "who am I" (sanity check that session/bearer works end-to-end)
 $r->get('/api/auth/whoami', function () {

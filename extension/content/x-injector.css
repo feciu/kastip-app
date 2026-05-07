@@ -386,3 +386,41 @@
   margin-top: .55rem;
 }
 .kastip-reply-actions button { flex: 1; margin: 0; }
+
+.kastip-qr-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  margin-top: .85rem;
+  padding: .75rem;
+  background: rgba(73,233,201,.06);
+  border: 1px solid rgba(73,233,201,.2);
+  border-radius: 8px;
+  font-size: .88rem;
+  color: #49e9c9;
+}
+.kastip-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(73,233,201,.2);
+  border-top-color: #49e9c9;
+  border-radius: 50%;
+  animation: kastip-spin 0.8s linear infinite;
+}
+@keyframes kastip-spin { to { transform: rotate(360deg); } }
+
+.kastip-manual-fallback {
+  margin-top: .85rem;
+  border-top: 1px solid #1f2335;
+  padding-top: .75rem;
+}
+.kastip-manual-fallback summary {
+  cursor: pointer;
+  color: #71767b;
+  font-size: .82rem;
+  user-select: none;
+}
+.kastip-manual-fallback summary:hover { color: #a8b1c2; }
+.kastip-manual-fallback[open] summary { color: #a8b1c2; margin-bottom: .55rem; }
