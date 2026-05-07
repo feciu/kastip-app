@@ -429,13 +429,11 @@ async function renderQrPane(modal, body, handle, init) {
     const fakeInfo = { kaspa_address: init.receiver_address };
     renderRegisteredPane(modal, body, handle, fakeInfo, null);
   });
-  // QR — bundled qr.js (web_accessible_resource). Two URI variants:
+  // QR — using api.qrserver.com. Hand-rolled qr.js had subtle bugs (real
+  // wallets like Kaspium/Tangem couldn't decode it). qrserver is battle-tested.
+  // Two URI variants:
   //   full:  kaspa:{addr}?amount={KAS}&label=tip-to-{handle}    — Kasware-friendly
   //   plain: kaspa:{addr}                                       — works in every wallet
-  let qrModule = null;
-  try { qrModule = await import(chrome.runtime.getURL('lib/qr.js')); }
-  catch (e) { body.querySelector('#kastip-qr').textContent = 'QR generation failed: ' + e.message; }
-
   const fullUri = init.qr_uri;
   const plainUri = init.receiver_address;
   let currentUri = fullUri;
@@ -443,7 +441,10 @@ async function renderQrPane(modal, body, handle, init) {
   function renderQr(uri) {
     currentUri = uri;
     const box = body.querySelector('#kastip-qr');
-    if (qrModule) box.innerHTML = qrModule.generateQrSvg(uri, 196);
+    const url = 'https://api.qrserver.com/v1/create-qr-code/?'
+      + 'data=' + encodeURIComponent(uri)
+      + '&size=200x200&margin=8&format=svg&ecc=M&color=000000&bgcolor=ffffff';
+    box.innerHTML = `<img src="${url}" width="200" height="200" alt="QR" style="display:block">`;
     body.querySelector('#kastip-uri').textContent = uri;
   }
   renderQr(fullUri);

@@ -11,7 +11,8 @@
   "host_permissions": [
     "https://x.com/*",
     "https://twitter.com/*",
-    "https://kastip.app/*"
+    "https://kastip.app/*",
+    "https://api.qrserver.com/*"
   ],
   "content_scripts": [
     {

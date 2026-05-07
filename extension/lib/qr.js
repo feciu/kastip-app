@@ -339,7 +339,10 @@ export function generateQrSvg(text, sizePx = 200) {
 
 function matrixToSvg(m, sizePx) {
   const sz = m.length;
-  const margin = 1;
+  // Quiet zone: ISO/IEC 18004 mandates 4 modules of white border around the
+  // symbol. Less than that (we used 1 before) is the #1 reason real-world
+  // scanners refuse to lock onto a QR.
+  const margin = 4;
   const total = sz + margin * 2;
   const cell = sizePx / total;
   let rects = '';
@@ -349,9 +352,10 @@ function matrixToSvg(m, sizePx) {
         const x = ((c + margin) * cell).toFixed(2);
         const y = ((r + margin) * cell).toFixed(2);
         const w = cell.toFixed(2);
-        rects += `<rect x="${x}" y="${y}" width="${w}" height="${w}" fill="#0d0f1a"/>`;
+        // Pure black, not the brand-tinted near-black — scanners are picky.
+        rects += `<rect x="${x}" y="${y}" width="${w}" height="${w}" fill="#000000"/>`;
       }
     }
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 ${sizePx} ${sizePx}"><rect width="${sizePx}" height="${sizePx}" fill="#fff"/>${rects}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 ${sizePx} ${sizePx}"><rect width="${sizePx}" height="${sizePx}" fill="#ffffff"/>${rects}</svg>`;
 }
