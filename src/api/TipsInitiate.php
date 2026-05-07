@@ -254,23 +254,14 @@ final class TipsInitiate
 
     private static function buildKaspaUri(string $address, float $amountKas, string $label, ?string $payload = null): string
     {
-        // BIP-21-style URI plus experimental payload/message params.
-        // Most Kaspa wallets read amount + label; payload/message support
-        // varies. If a wallet honors `payload=`, it injects our token into
-        // the on-chain TX payload field — watcher matches by tip_id directly,
-        // collision-free even when many users tip the same recipient with
-        // identical amounts.
+        // Minimal URI — address + amount only. Tested with real wallets:
+        // Kaspium ignored ?payload=/?message= anyway, so dropping those
+        // params keeps the QR shorter (denser scans) and reduces the chance
+        // some picky wallet refuses to parse unexpected keys. label/payload
+        // arguments still accepted for backward-compat but unused.
         $params = [
             'amount' => rtrim(rtrim(number_format($amountKas, 8, '.', ''), '0'), '.'),
-            'label'  => $label,
         ];
-        if ($payload !== null && $payload !== '') {
-            // Both keys, in case different wallets recognize different ones:
-            //   message — BIP-21 standard (Bitcoin convention)
-            //   payload — Kaspa-specific tx payload hint
-            $params['message'] = $payload;
-            $params['payload'] = $payload;
-        }
         return "$address?" . http_build_query($params);
     }
 
