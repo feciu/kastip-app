@@ -128,6 +128,19 @@ final class TipsInitiate
     ): void {
         $sompi = (int) round($amountKas * self::SOMPI_PER_KAS);
 
+        // Cancel any prior pending/broadcast tipy for the same (sender, receiver)
+        // pair. Otherwise repeated 'Show QR' clicks pile up unmatched intents
+        // and confuse the watcher's FIFO matching (it would credit the oldest
+        // when the user actually sent for the newest).
+        App::db()->prepare("
+            UPDATE tips
+            SET status = 'cancelled'
+            WHERE sender_user_id = :s
+              AND receiver_user_id = :ri
+              AND status IN ('pending', 'broadcast')
+              AND txid IS NULL
+        ")->execute(['s' => $senderId, 'ri' => $receiverId]);
+
         // Insert tip row in 'pending' state
         $stmt = App::db()->prepare("
             INSERT INTO tips
