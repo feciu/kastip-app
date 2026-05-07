@@ -168,7 +168,7 @@ final class TipsInitiate
         App::db()->prepare("UPDATE tips SET payload = :p WHERE id = :id")
             ->execute(['p' => $payloadStr, 'id' => $tipId]);
 
-        $qrUri = self::buildKaspaUri($receiverAddress, $amountKas, "tip-to-$receiverHandle");
+        $qrUri = self::buildKaspaUri($receiverAddress, $amountKas, "tip-to-$receiverHandle", $payloadStr);
 
         App::jsonResponse([
             'tip_id'           => $tipId,
@@ -252,13 +252,26 @@ final class TipsInitiate
         return $row;
     }
 
-    private static function buildKaspaUri(string $address, float $amountKas, string $label): string
+    private static function buildKaspaUri(string $address, float $amountKas, string $label, ?string $payload = null): string
     {
-        $params = http_build_query([
+        // BIP-21-style URI plus experimental payload/message params.
+        // Most Kaspa wallets read amount + label; payload/message support
+        // varies. If a wallet honors `payload=`, it injects our token into
+        // the on-chain TX payload field — watcher matches by tip_id directly,
+        // collision-free even when many users tip the same recipient with
+        // identical amounts.
+        $params = [
             'amount' => rtrim(rtrim(number_format($amountKas, 8, '.', ''), '0'), '.'),
             'label'  => $label,
-        ]);
-        return "$address?$params";
+        ];
+        if ($payload !== null && $payload !== '') {
+            // Both keys, in case different wallets recognize different ones:
+            //   message — BIP-21 standard (Bitcoin convention)
+            //   payload — Kaspa-specific tx payload hint
+            $params['message'] = $payload;
+            $params['payload'] = $payload;
+        }
+        return "$address?" . http_build_query($params);
     }
 
     private static function sanitizeTweetUrl(mixed $url): ?string
