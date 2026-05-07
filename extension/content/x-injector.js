@@ -383,9 +383,18 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
 async function renderQrPane(modal, body, handle, init) {
   body.innerHTML = `
     <button id="kastip-qr-back" class="kastip-link-btn" type="button">← Back</button>
-    <p style="color:#71767b;margin:.5rem 0 .75rem">Scan with any Kaspa wallet (Kaspium, Tangem, KSPR, etc.). We'll auto-detect the transaction once it lands on-chain — typically within a few seconds.</p>
+    <p style="color:#71767b;margin:.5rem 0 .5rem">Scan with any Kaspa wallet (Kaspium, Tangem, KSPR, etc.). We'll auto-detect the transaction once it lands on-chain — typically within a few seconds.</p>
+
+    <div class="kastip-qr-toggle">
+      <label>
+        <input type="checkbox" id="kastip-qr-amount" checked>
+        Include amount (${init.amount_kas} KAS) in QR
+      </label>
+      <p style="font-size:.74rem;color:#5a6378;margin-top:.2rem">If your wallet doesn't auto-fill the amount after scanning, untoggle and enter ${init.amount_kas} KAS manually.</p>
+    </div>
+
     <div class="kastip-qr-wrap" id="kastip-qr"></div>
-    <div class="kastip-uri-box" id="kastip-uri">${escapeHtml(init.qr_uri)}</div>
+    <div class="kastip-uri-box" id="kastip-uri"></div>
     <button id="kastip-copy-uri" class="kastip-secondary-btn">Copy URI</button>
 
     <div class="kastip-qr-waiting" id="kastip-waiting">
@@ -416,16 +425,31 @@ async function renderQrPane(modal, body, handle, init) {
     const fakeInfo = { kaspa_address: init.receiver_address };
     renderRegisteredPane(modal, body, handle, fakeInfo, null);
   });
-  // QR — use bundled qr.js (loaded as web_accessible_resource)
-  try {
-    const { generateQrSvg } = await import(chrome.runtime.getURL('lib/qr.js'));
-    body.querySelector('#kastip-qr').innerHTML = generateQrSvg(init.qr_uri, 196);
-  } catch (e) {
-    body.querySelector('#kastip-qr').textContent = 'QR generation failed: ' + e.message;
+  // QR — bundled qr.js (web_accessible_resource). Two URI variants:
+  //   full:  kaspa:{addr}?amount={KAS}&label=tip-to-{handle}    — Kasware-friendly
+  //   plain: kaspa:{addr}                                       — works in every wallet
+  let qrModule = null;
+  try { qrModule = await import(chrome.runtime.getURL('lib/qr.js')); }
+  catch (e) { body.querySelector('#kastip-qr').textContent = 'QR generation failed: ' + e.message; }
+
+  const fullUri = init.qr_uri;
+  const plainUri = init.receiver_address;
+  let currentUri = fullUri;
+
+  function renderQr(uri) {
+    currentUri = uri;
+    const box = body.querySelector('#kastip-qr');
+    if (qrModule) box.innerHTML = qrModule.generateQrSvg(uri, 196);
+    body.querySelector('#kastip-uri').textContent = uri;
   }
+  renderQr(fullUri);
+
+  body.querySelector('#kastip-qr-amount').addEventListener('change', (e) => {
+    renderQr(e.target.checked ? fullUri : plainUri);
+  });
 
   body.querySelector('#kastip-copy-uri').addEventListener('click', () => {
-    navigator.clipboard.writeText(init.qr_uri).then(() => {
+    navigator.clipboard.writeText(currentUri).then(() => {
       const btn = body.querySelector('#kastip-copy-uri');
       const orig = btn.textContent;
       btn.textContent = '✓ Copied';
