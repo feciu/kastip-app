@@ -221,6 +221,22 @@ final class InternalTxDetected
             return $a['tip']['id'] <=> $b['tip']['id'];
         });
 
+        // Telemetry: log when multiple candidates were viable. If we see
+        // these regularly in production, time to add a unique-amount offset
+        // mechanism. For now, single-tip-per-pair + exact-match priority is
+        // expected to handle nearly all real-world traffic at MVP scale.
+        if (count($scored) > 1) {
+            $tipIds = array_map(fn($s) => $s['tip']['id'], $scored);
+            $diffs = array_map(fn($s) => $s['diff'], $scored);
+            error_log(sprintf(
+                '[InternalTxDetected] AMBIGUOUS_MATCH txid=%s candidates=[%s] diffs=[%s] picked=tip_%d',
+                $txid,
+                implode(',', $tipIds),
+                implode(',', $diffs),
+                $scored[0]['tip']['id']
+            ));
+        }
+
         foreach ($scored as $s) {
             $tip = $s['tip'];
             // Match — confirm + update totals
