@@ -50,9 +50,12 @@ final class TipsList
                    t.initiated_at, t.confirmed_at,
                    us.x_username AS sender_x_username,
                    us.x_display_name AS sender_x_display_name,
-                   us.x_avatar_url AS sender_x_avatar_url
+                   us.x_avatar_url AS sender_x_avatar_url,
+                   ur.x_display_name AS receiver_x_display_name,
+                   ur.x_avatar_url AS receiver_x_avatar_url
             FROM tips t
             LEFT JOIN users us ON t.sender_user_id = us.id
+            LEFT JOIN users ur ON t.receiver_user_id = ur.id
             WHERE t.id = :id LIMIT 1
         ");
         $stmt->execute(['id' => $tipId]);
@@ -80,9 +83,12 @@ final class TipsList
                        t.initiated_at, t.confirmed_at,
                        us.x_username AS sender_x_username,
                        us.x_display_name AS sender_x_display_name,
-                       us.x_avatar_url AS sender_x_avatar_url
+                       us.x_avatar_url AS sender_x_avatar_url,
+                       ur.x_display_name AS receiver_x_display_name,
+                       ur.x_avatar_url AS receiver_x_avatar_url
                 FROM tips t
                 LEFT JOIN users us ON t.sender_user_id = us.id
+                LEFT JOIN users ur ON t.receiver_user_id = ur.id
                 WHERE t.$userColumn = :uid";
         $params = ['uid' => $userId];
         if ($before > 0) {
@@ -114,8 +120,10 @@ final class TipsList
             'sender_x_username'   => $r['sender_x_username'] ?? null,
             'sender_x_display_name' => $r['sender_x_display_name'] ?? null,
             'sender_x_avatar_url' => $r['sender_x_avatar_url'] ?? null,
-            'receiver_user_id'    => $r['receiver_user_id'] !== null ? (int) $r['receiver_user_id'] : null,
-            'receiver_x_username' => $r['receiver_x_username'],
+            'receiver_user_id'      => $r['receiver_user_id'] !== null ? (int) $r['receiver_user_id'] : null,
+            'receiver_x_username'   => $r['receiver_x_username'],
+            'receiver_x_display_name' => $r['receiver_x_display_name'] ?? null,
+            'receiver_x_avatar_url'   => $r['receiver_x_avatar_url'] ?? null,
             'sender_kaspa_address'   => $r['sender_kaspa_address'],
             'receiver_kaspa_address' => $r['receiver_kaspa_address'],
             'amount_kas'   => (float) $r['amount_kas'],

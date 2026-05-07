@@ -122,9 +122,16 @@ final class Dashboard
   /* ─── tip list ───────────────────────────────── */
   .tip-list{display:flex;flex-direction:column;gap:.5rem}
   .tip-row{
-    display:grid;grid-template-columns:auto 1fr auto;gap:.85rem;align-items:center;
-    background:#161927;border:1px solid #1f2335;border-radius:10px;padding:.85rem 1rem;
+    display:grid;grid-template-columns:auto auto 1fr auto;gap:.75rem;align-items:center;
+    background:#161927;border:1px solid #1f2335;border-radius:10px;padding:.7rem 1rem;
   }
+  .tip-row .avatar{
+    width:36px;height:36px;border-radius:50%;
+    background:#0d0f1a;border:1px solid #2a2f44;
+    display:flex;align-items:center;justify-content:center;
+    color:#5a6378;font-size:.78rem;
+  }
+  .tip-row .avatar img{width:100%;height:100%;border-radius:50%}
   .tip-row .who{font-weight:500}
   .tip-row .when{font-size:.78rem;color:#5a6378}
   .tip-row .amt{font-weight:600;color:#49e9c9}
@@ -317,13 +324,18 @@ async function loadMe(){
 // ─── tip lists ──────────────────────────────────
 function tipRowHtml(tip, kind){
   const otherHandle = kind === 'sent' ? tip.receiver_x_username : (tip.sender_x_username || '?');
+  const otherAvatar = kind === 'sent' ? tip.receiver_x_avatar_url : tip.sender_x_avatar_url;
   const arrow = kind === 'sent' ? '→' : '←';
   const txLink = tip.txid
-    ? `<a class="tx-link" href="https://explorer.kaspa.org/txs/${tip.txid}" target="_blank" rel="noopener">tx ↗</a>`
+    ? `<a class="tx-link" href="https://kaspa.stream/transactions/${tip.txid}" target="_blank" rel="noopener">tx ↗</a>`
     : '';
   const msg = tip.message ? `<div style="font-size:.78rem;color:#a8b1c2;margin-top:.15rem">"${escapeHtml(tip.message)}"</div>` : '';
+  const avatarBlock = otherAvatar
+    ? `<div class="avatar"><img src="${escapeHtml(otherAvatar)}" alt="" referrerpolicy="no-referrer"></div>`
+    : `<div class="avatar">@</div>`;
   return `
     <div class="tip-row">
+      ${avatarBlock}
       <div>
         <div class="who">${arrow} @${escapeHtml(otherHandle)}</div>
         <div class="when">${formatRel(tip.initiated_at)}</div>
