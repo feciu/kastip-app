@@ -74,6 +74,23 @@ async function kaswareSendKaspa(address, sompi, options) {
   return await bridgeCall('kasware:sendKaspa', { address, sompi, options });
 }
 
+// Multi-wallet helpers — universal API for any wallet known to the bridge.
+async function detectWallets() {
+  try { return await bridgeCall('wallet:detect', null, 1500); }
+  catch { return {}; }
+}
+async function walletRequestAccounts(walletId) {
+  return await bridgeCall('wallet:requestAccounts', { walletId });
+}
+async function walletSendKaspa(walletId, address, sompi, payload) {
+  return await bridgeCall('wallet:sendKaspa', { walletId, address, sompi, payload });
+}
+
+const WALLET_INSTALL_LINKS = {
+  kasware: 'https://chromewebstore.google.com/detail/kasware-wallet/hklhheigdmpoolooomdihmhlpjjdbklf',
+  kastle: 'https://chromewebstore.google.com/detail/kastle/oambclflhjfppdmkghokjmpppmaebego',
+};
+
 // Kasware (and other wallets) return txid in various shapes — string, object,
 // JSON-wrapped string, with/without "0x" prefix. Normalize to lowercase hex.
 function normalizeTxid(raw) {
@@ -265,10 +282,7 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
       <span>To: <code>${escapeHtml(trunc)}</code></span>
     </div>
     <div class="kastip-error" id="kastip-err" style="display:none"></div>
-    <button id="kastip-send" class="kastip-send-btn">Send via Kasware</button>
-    <div style="text-align:center;margin-top:.5rem">
-      <a href="#" id="kastip-show-qr" style="font-size:.8rem;color:#71767b">No Kasware? Show QR</a>
-    </div>
+    <button id="kastip-send" class="kastip-send-btn">Send tip</button>
   `;
 
   const amountInput = body.querySelector('#kastip-amount');
@@ -315,43 +329,21 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
       return;
     }
 
-    // 3) Kasware sendKaspa (single-output) — call through MAIN-world bridge
-    const haveKasware = await hasKasware();
-    if (!haveKasware) {
-      renderQrPane(modal, body, handle, init);
+    // 3) Detect available wallets, render picker (or auto-route if 1 detected)
+    const detected = await detectWallets();
+    const detectedList = Object.entries(detected || {});
+    const available = detectedList.filter(([_, w]) => w.detected);
+    if (available.length === 1) {
+      // Single wallet: skip picker, send directly
+      const [walletId] = available[0];
+      await sendViaWallet(modal, body, handle, init, amt, tweetUrl, walletId);
       return;
     }
-    let rawTxid;
-    try {
-      const accs = await kaswareRequestAccounts();
-      if (!accs || accs.length === 0) throw new Error('No wallet account');
-      const sompi = Math.floor(amt * SOMPI_PER_KAS);
-      rawTxid = await kaswareSendKaspa(init.receiver_address, sompi, { payload: init.payload });
-      console.log('[KasTip] raw txid from kasware:', JSON.stringify(rawTxid));
-    } catch (e) {
-      if (e.message === 'NO_KASWARE') {
-        renderQrPane(modal, body, handle, init);
-        return;
-      }
-      showErr('Wallet error: ' + (e.message || e));
-      return;
-    }
-
-    const txid = normalizeTxid(rawTxid);
-    console.log('[KasTip] normalized txid:', txid, 'length:', txid.length);
-
-    // 4) confirm
-    try {
-      const conf = (await bg({ type: 'api:tip-confirm', body: { tip_id: init.tip_id, txid } })).data;
-      renderSuccessPane(modal, body, handle, amt, txid, conf, tweetUrl);
-    } catch (e) {
-      showErr('Sent but confirm failed: ' + e.message
-        + ' | raw=' + JSON.stringify(rawTxid).slice(0, 80)
-        + ' | normalized=' + txid.slice(0, 16) + '… (' + txid.length + ' chars)');
-    }
+    renderWalletPicker(modal, body, handle, init, amt, tweetUrl, detectedList);
   });
 
-  body.querySelector('#kastip-show-qr').addEventListener('click', async (e) => {
+  // ─── unused: legacy show-qr-link handler (kept stub for safety) ─────────
+  body.querySelector('#kastip-show-qr-LEGACY-DISABLED')?.addEventListener('click', async (e) => {
     e.preventDefault();
     clearErr();
     const amt = parseFloat(amountInput.value);
@@ -377,6 +369,97 @@ function renderRegisteredPane(modal, body, handle, info, tweetUrl) {
     }
     renderQrPane(modal, body, handle, init);
   });
+}
+
+// ─── wallet picker pane (Kasware / Kastle / QR) ───────────────────────────
+function renderWalletPicker(modal, body, handle, init, amt, tweetUrl, detectedList) {
+  const back = () => {
+    const fakeInfo = { kaspa_address: init.receiver_address };
+    renderRegisteredPane(modal, body, handle, fakeInfo, tweetUrl);
+  };
+
+  const walletEntries = detectedList.map(([id, w]) => ({
+    id,
+    name: w.name || id,
+    detected: w.detected,
+    installUrl: WALLET_INSTALL_LINKS[id] || null,
+  }));
+
+  const rowHtml = (w) => {
+    const initial = w.name.slice(0, 1).toUpperCase();
+    if (w.detected) {
+      return `
+        <button class="kastip-wallet-row" data-wallet="${w.id}">
+          <span class="kastip-wallet-icon">${initial}</span>
+          <span class="kastip-wallet-name">${escapeHtml(w.name)}</span>
+          <span class="kastip-wallet-status">✓ Detected</span>
+        </button>`;
+    }
+    const link = w.installUrl
+      ? `<a class="kastip-wallet-install" href="${w.installUrl}" target="_blank" rel="noopener">Install ↗</a>`
+      : '';
+    return `
+      <div class="kastip-wallet-row kastip-wallet-row-disabled">
+        <span class="kastip-wallet-icon">${initial}</span>
+        <span class="kastip-wallet-name">${escapeHtml(w.name)}</span>
+        ${link}
+      </div>`;
+  };
+
+  body.innerHTML = `
+    <button class="kastip-link-btn" id="kastip-picker-back" type="button">← Back</button>
+    <p style="color:#71767b;margin:.5rem 0 .85rem">Choose how to send <strong>${amt} KAS</strong> to @${escapeHtml(handle)}:</p>
+    <div class="kastip-wallet-list">
+      ${walletEntries.map(rowHtml).join('')}
+      <button class="kastip-wallet-row" data-wallet="qr">
+        <span class="kastip-wallet-icon">📱</span>
+        <span class="kastip-wallet-name">Use QR code</span>
+        <span class="kastip-wallet-status">Any wallet</span>
+      </button>
+    </div>
+    <div class="kastip-error" id="kastip-picker-err" style="display:none"></div>
+  `;
+  body.querySelector('#kastip-picker-back').addEventListener('click', back);
+
+  body.querySelectorAll('button.kastip-wallet-row[data-wallet]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const walletId = btn.dataset.wallet;
+      if (walletId === 'qr') { renderQrPane(modal, body, handle, init); return; }
+      await sendViaWallet(modal, body, handle, init, amt, tweetUrl, walletId);
+    });
+  });
+}
+
+// ─── send tip through a specific wallet (Kasware/Kastle/etc.) ─────────────
+async function sendViaWallet(modal, body, handle, init, amt, tweetUrl, walletId) {
+  // Show "talking to wallet…" state inside the modal so the user sees activity
+  // while Kasware/Kastle popup opens.
+  const errEl = body.querySelector('#kastip-picker-err') || body.querySelector('#kastip-err');
+  const setErr = (m) => { if (errEl) { errEl.textContent = m; errEl.style.display = 'block'; } };
+
+  let rawTxid;
+  try {
+    const accs = await walletRequestAccounts(walletId);
+    if (!accs || accs.length === 0) throw new Error('No wallet account');
+    const sompi = Math.floor(amt * SOMPI_PER_KAS);
+    rawTxid = await walletSendKaspa(walletId, init.receiver_address, sompi, init.payload);
+    console.log('[KasTip] raw txid from', walletId, ':', JSON.stringify(rawTxid));
+  } catch (e) {
+    setErr(`${walletId} error: ` + (e.message || e));
+    return;
+  }
+  const txid = normalizeTxid(rawTxid);
+  console.log('[KasTip] normalized txid:', txid, 'length:', txid.length);
+
+  // Confirm
+  try {
+    const conf = (await bg({ type: 'api:tip-confirm', body: { tip_id: init.tip_id, txid } })).data;
+    renderSuccessPane(modal, body, handle, amt, txid, conf, tweetUrl);
+  } catch (e) {
+    setErr('Sent but confirm failed: ' + e.message
+      + ' | raw=' + JSON.stringify(rawTxid).slice(0, 80)
+      + ' | normalized=' + txid.slice(0, 16) + '… (' + txid.length + ' chars)');
+  }
 }
 
 // ─── QR fallback pane ─────────────────────────────────────────────────────
