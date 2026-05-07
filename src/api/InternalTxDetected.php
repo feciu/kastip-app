@@ -186,7 +186,7 @@ final class InternalTxDetected
         }
 
         // Find candidate pending tipy — receiver_kaspa_address in our output map,
-        // status pending/broadcast, and recent (< 30 min). Oldest first (FIFO).
+        // status pending/broadcast, and recent (< 30 min).
         $placeholders = implode(',', array_fill(0, count($byAddr), '?'));
         $sql = "
             SELECT id, sender_user_id, receiver_user_id, receiver_kaspa_address,
@@ -195,18 +195,34 @@ final class InternalTxDetected
             WHERE status IN ('pending', 'broadcast')
               AND receiver_kaspa_address IN ($placeholders)
               AND initiated_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
-            ORDER BY id ASC
         ";
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array_keys($byAddr));
         $candidates = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
+        // Score each candidate by closeness to actual amount on its address.
+        // Priorities:
+        //   1. Exact match (within 1 sompi tolerance for rounding) — perfect.
+        //   2. Least-overpayment match (smallest positive diff) — user paid
+        //      slightly more, presumably for THIS specific tip.
+        //   3. Underpayment is NOT a match (user sent less than asked → tip
+        //      stays pending → user can retry or backend times out).
+        // FIFO id-asc as tiebreaker if multiple candidates tie on diff.
+        $scored = [];
         foreach ($candidates as $tip) {
             $expectedSompi = (int) round((float) $tip['amount_kas'] * 100_000_000);
             $actualSompi   = (int) ($byAddr[$tip['receiver_kaspa_address']] ?? 0);
-            if ($actualSompi < $expectedSompi) {
-                continue;
-            }
+            $diff = $actualSompi - $expectedSompi;
+            if ($diff < 0) continue;  // underpayment — skip
+            $scored[] = ['tip' => $tip, 'diff' => $diff, 'expected' => $expectedSompi];
+        }
+        usort($scored, function ($a, $b) {
+            if ($a['diff'] !== $b['diff']) return $a['diff'] <=> $b['diff'];
+            return $a['tip']['id'] <=> $b['tip']['id'];
+        });
+
+        foreach ($scored as $s) {
+            $tip = $s['tip'];
             // Match — confirm + update totals
             $pdo->beginTransaction();
             try {
