@@ -52,8 +52,22 @@
     },
     kastle: {
       name: 'Kastle',
-      detect: () => typeof window.kastle !== 'undefined' && window.kastle !== null,
-      accounts: async () => await window.kastle.requestAccounts(),
+      // Kastle injects window.kastle and a separate window.kastle.ethereum
+      // subprovider for EVM. Look for the Kaspa-specific methods (connect)
+      // to distinguish from EVM-only injection.
+      detect: () =>
+        typeof window.kastle === 'object'
+        && window.kastle !== null
+        && typeof window.kastle.connect === 'function'
+        && typeof window.kastle.sendKaspa === 'function',
+      // Kastle: connect() returns bool handshake, then getAccount() returns
+      // {address, publicKey}. NOT requestAccounts() like Kasware.
+      accounts: async () => {
+        const ok = await window.kastle.connect();
+        if (!ok) throw new Error('Kastle connect rejected');
+        const acc = await window.kastle.getAccount();
+        return acc?.address ? [acc.address] : [];
+      },
       send: async ({ address, sompi, payload }) => {
         // Kastle requires payload as a hex string ("0-9 a-f", even length).
         const opts = { priorityFee: 0 };
