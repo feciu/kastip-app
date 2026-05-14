@@ -61,6 +61,8 @@ $r->get('/api/tips/{id}/status',   fn($p) => \KasTip\Api\TipsList::status((int) 
 $r->get('/onboard/address', fn() => \KasTip\Web\Onboard::renderAddressForm());
 $r->get('/dashboard',       fn() => \KasTip\Web\Dashboard::render());
 $r->get('/u/{handle}',      fn($p) => \KasTip\Web\Profile::render($p['handle']));
+$r->get('/terms',           fn() => \KasTip\Web\Terms::render());
+$r->get('/privacy',         fn() => \KasTip\Web\Privacy::render());
 
 // ─── landing ──────────────────────────────────────────────────────────────
 $r->get('/', fn() => \KasTip\Web\Landing::render());

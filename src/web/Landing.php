@@ -271,7 +271,12 @@ final class Landing
 <?php endif; ?>
 
 <footer>
-  <p>KasTip — built on <a href="https://kaspa.org" target="_blank" rel="noopener">Kaspa</a>. Browser extension submitting soon to Chrome &amp; Firefox stores.</p>
+  <p>
+    KasTip — built on <a href="https://kaspa.org" target="_blank" rel="noopener">Kaspa</a>.
+    <a href="/terms">Terms</a> ·
+    <a href="/privacy">Privacy</a> ·
+    <a href="https://x.com/kastipapp" target="_blank" rel="noopener">@kastipapp</a>
+  </p>
 </footer>
 
 <?php if ($hasDonate): ?>
