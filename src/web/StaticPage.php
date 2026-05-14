@@ -84,6 +84,7 @@ final class StaticPage
   <p>
     <a href="/terms">Terms</a> ·
     <a href="/privacy">Privacy</a> ·
+    <a href="/support">Support</a> ·
     <a href="/">Home</a> ·
     <a href="https://github.com/feciu/kastip-app" target="_blank" rel="noopener">Source</a>
   </p>

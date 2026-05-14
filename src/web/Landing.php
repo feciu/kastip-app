@@ -275,6 +275,7 @@ final class Landing
     KasTip — built on <a href="https://kaspa.org" target="_blank" rel="noopener">Kaspa</a>.
     <a href="/terms">Terms</a> ·
     <a href="/privacy">Privacy</a> ·
+    <a href="/support">Support</a> ·
     <a href="https://x.com/kastipapp" target="_blank" rel="noopener">@kastipapp</a>
   </p>
 </footer>

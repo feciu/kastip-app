@@ -63,6 +63,7 @@ $r->get('/dashboard',       fn() => \KasTip\Web\Dashboard::render());
 $r->get('/u/{handle}',      fn($p) => \KasTip\Web\Profile::render($p['handle']));
 $r->get('/terms',           fn() => \KasTip\Web\Terms::render());
 $r->get('/privacy',         fn() => \KasTip\Web\Privacy::render());
+$r->get('/support',         fn() => \KasTip\Web\Support::render());
 
 // ─── landing ──────────────────────────────────────────────────────────────
 $r->get('/', fn() => \KasTip\Web\Landing::render());
