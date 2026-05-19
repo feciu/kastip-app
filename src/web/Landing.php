@@ -200,9 +200,10 @@ final class Landing
   <h1>Tip <span class="accent">Kaspa</span> to anyone on X<br>with one click.</h1>
   <p class="lead">Browser extension that adds a tip button next to every @handle. Send KAS directly between wallets — non-custodial, peer-to-peer, no fees.</p>
   <div class="cta-row">
-    <a href="/api/auth/x/start?from=%2Fdashboard" class="btn-primary">Connect X to start</a>
-    <a href="#how" class="btn-secondary">How it works</a>
+    <a href="https://chromewebstore.google.com/detail/kastip-%E2%80%94-tip-kaspa-on-x/kpipgcpkodogldocgpflfoigpemihcme" target="_blank" rel="noopener" class="btn-primary">Install from Chrome Web Store</a>
+    <a href="/api/auth/x/start?from=%2Fdashboard" class="btn-secondary">Connect X</a>
   </div>
+  <p style="margin-top:.85rem;font-size:.85rem;color:#5a6378">Or sign in first to set your Kaspa address — install the extension when you're ready to tip.</p>
 </section>
 
 <section class="how" id="how">
@@ -221,7 +222,7 @@ final class Landing
     <div class="step">
       <div class="step-num">3</div>
       <h3>Tip on X</h3>
-      <p>Install the KasTip browser extension. A "💰 KasTip" button appears next to every handle. One click, one transaction.</p>
+      <p>Install the <a href="https://chromewebstore.google.com/detail/kastip-%E2%80%94-tip-kaspa-on-x/kpipgcpkodogldocgpflfoigpemihcme" target="_blank" rel="noopener" style="color:#49e9c9">KasTip browser extension</a>. A "💰 KasTip" button appears next to every handle. One click, one transaction.</p>
     </div>
   </div>
 </section>
