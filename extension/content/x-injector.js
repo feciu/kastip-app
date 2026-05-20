@@ -606,9 +606,9 @@ async function renderQrPane(modal, body, handle, init) {
 function renderUnregisteredPane(modal, body, handle, tweetUrl) {
   body.innerHTML = `
     <div class="kastip-unregistered">
-      <p>⚠️ <strong>@${escapeHtml(handle)}</strong> doesn't have a KasTip account yet.</p>
-      <p>To tip them, share the invite reply below — they'll be able to claim future tips after registering.</p>
-      <button id="kastip-gen-invite" class="kastip-send-btn">Generate invite</button>
+      <p><strong>@${escapeHtml(handle)}</strong> isn't on KasTip yet.</p>
+      <p>Drop a friendly reply so they know — they'll get the tip when they join.</p>
+      <button id="kastip-gen-invite" class="kastip-send-btn">Generate reply</button>
     </div>
   `;
   body.querySelector('#kastip-gen-invite').addEventListener('click', async () => {
@@ -629,10 +629,10 @@ function renderUnregisteredPaneWithData(modal, body, handle, init) {
   const inv = init.invitation;
   body.innerHTML = `
     <div class="kastip-unregistered">
-      <p>📬 <strong>@${escapeHtml(handle)}</strong> doesn't have KasTip yet.</p>
-      <p style="font-size:.85em;color:#71767b">Copy this reply — they'll see the invite link under their tweet:</p>
+      <p><strong>@${escapeHtml(handle)}</strong> isn't on KasTip yet.</p>
+      <p style="font-size:.85em;color:#71767b">Copy this reply and post it under their tweet:</p>
       <div class="kastip-suggested-reply">${escapeHtml(inv.suggested_reply)}</div>
-      <button id="kastip-copy-reply" class="kastip-send-btn">Copy invite reply</button>
+      <button id="kastip-copy-reply" class="kastip-send-btn">Copy reply</button>
     </div>
   `;
   body.querySelector('#kastip-copy-reply').addEventListener('click', () => {
@@ -651,12 +651,8 @@ function renderSuccessPane(modal, body, handle, amt, txid, conf, tweetUrl) {
     pending: '⏳ Pending',
   }[conf.status] || conf.status;
 
-  const replyLines = [
-    `Just sent you ${amt} KAS via @kastipapp ⚡`,
-    `TX: ${KASPA_EXPLORER_TX}/${txid}`,
-    `kastip.app`,
-  ];
-  const replyText = replyLines.join('\n');
+  const replyText = 'Sent you a tip via @KasTipApp 🙏';
+  const replyLines = [replyText];
 
   body.innerHTML = `
     <div style="text-align:center">

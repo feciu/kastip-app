@@ -222,12 +222,7 @@ final class TipsInitiate
         }
 
         $inviteUrl = App::baseUrl() . "/u/$receiverHandle?invite=$token";
-        $reply = sprintf(
-            "Hey @%s! Tried to tip you %s KAS via @kastipapp ⚡ — sign up to claim: %s",
-            $receiverHandle,
-            rtrim(rtrim(number_format($amountKas, 4, '.', ''), '0'), '.'),
-            $inviteUrl
-        );
+        $reply = 'Want to send you a tip via @KasTipApp 🙏';
 
         App::jsonResponse([
             'tip_id'          => null,
