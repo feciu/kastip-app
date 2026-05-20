@@ -24,7 +24,11 @@ return [
         'client_id'     => 'CHANGE_ME',
         'client_secret' => 'CHANGE_ME',  // ignored for Public clients (Native App / SPA)
         'redirect_uri'  => 'https://kastip.app/api/auth/x/callback',
-        'scope'         => 'users.read',  // minimal — NOT 'tweet.read users.read'
+        // X v2 quirk: /2/users/me returns generic 403 when called with only
+        // 'users.read'. 'tweet.read users.read' is the minimum that actually
+        // works — both scopes are read-only; no write/posting permission is
+        // requested or granted.
+        'scope'         => 'tweet.read users.read',
         // X Dev Portal "Type of App":
         //   Native App / Single-page App  →  public_client = true  (PKCE only, NO Basic Auth)
         //   Web App, Automated App or Bot →  public_client = false (PKCE + Basic Auth with secret)
