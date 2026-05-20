@@ -37,6 +37,14 @@ final class Landing
         // kaspa: URI for QR + wallet click-through. Single-output, no amount specified.
         $donateUri = $hasDonate ? $donate . '?label=' . rawurlencode('Support KasTip') : '';
 
+        // Silent live counter — total registered users. Rendered after @kastipapp
+        // in the footer as "(N)"; meaningful only to the maintainer.
+        try {
+            $userCount = (int) App::db()->query("SELECT COUNT(*) FROM users")->fetchColumn();
+        } catch (\Throwable $e) {
+            $userCount = 0;
+        }
+
         header('Content-Type: text/html; charset=utf-8');
         ?><!DOCTYPE html>
 <html lang="en">
@@ -278,6 +286,7 @@ final class Landing
     <a href="/privacy">Privacy</a> ·
     <a href="/support">Support</a> ·
     <a href="https://x.com/kastipapp" target="_blank" rel="noopener">@kastipapp</a>
+    <span style="color:#5a6378">(<?= $userCount ?>)</span>
   </p>
 </footer>
 
