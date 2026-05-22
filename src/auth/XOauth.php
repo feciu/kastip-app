@@ -232,6 +232,13 @@ final class XOauth
 
         // ─── respond ───────────────────────────────────────────────────────
         if ($clientKind === 'extension') {
+            // Issue a parallel web-kind session and Set-Cookie on this response,
+            // before bouncing to chromiumapp.org. chrome.identity.launchWebAuthFlow
+            // popups share the regular browser profile cookie jar, so the cookie
+            // persists — any later visit to kastip.app/* in this profile finds the
+            // user already signed in, no second OAuth round-trip required.
+            Session::create($userId, 'web');
+
             // Extension flow: redirect to the chromiumapp.org URL with token.
             // chrome.identity.launchWebAuthFlow captures this and returns it
             // to the extension. redirect_after was validated to be chromiumapp.org.

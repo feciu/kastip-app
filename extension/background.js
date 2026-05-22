@@ -189,6 +189,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true, user });
           return;
         }
+        case 'users:save-address': {
+          await apiFetch('POST', '/users/register', { kaspa_address: msg.address });
+          const user = await apiFetch('GET', '/users/me');
+          await setCachedUser(user);
+          sendResponse({ ok: true, user });
+          return;
+        }
         case 'api:lookup': {
           const handle = encodeURIComponent(msg.handle);
           const data = await apiFetch('GET', `/users/lookup?handle=${handle}`);

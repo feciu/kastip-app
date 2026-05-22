@@ -30,6 +30,37 @@
     <button id="connect-different-btn" class="btn btn-link">Connect a different X account</button>
   </div>
 
+  <!-- signed-in but needs to set Kaspa address (first-time onboarding inline) -->
+  <div id="state-onboard-address" style="display:none">
+    <div class="profile">
+      <img id="onb-avatar" alt="">
+      <div class="meta">
+        <strong id="onb-display-name"></strong>
+        <span id="onb-handle"></span>
+      </div>
+    </div>
+    <p class="lead" style="margin-bottom:.75rem">One last step — your Kaspa address. Tips arrive directly here, peer-to-peer. We never hold your KAS.</p>
+    <form id="addr-form">
+      <input
+        type="text"
+        id="kaspa-address"
+        class="addr-input"
+        placeholder="kaspa:qpz..."
+        autocomplete="off"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+        required
+      >
+      <button type="submit" id="addr-save-btn" class="btn btn-primary" style="margin-top:.6rem">Save and continue</button>
+      <div class="addr-error" id="addr-error" style="display:none"></div>
+    </form>
+    <p class="hint">Don't have a Kaspa wallet yet? Install
+      <a href="https://kasware.xyz" target="_blank" rel="noopener">Kasware</a>,
+      create a wallet, and copy your receiving address here.</p>
+    <button id="onb-signout-btn" class="btn btn-link" style="margin-top:.25rem">Sign out</button>
+  </div>
+
   <!-- signed-in state -->
   <div id="state-signed" style="display:none">
     <div class="profile">
@@ -38,11 +69,6 @@
         <strong id="display-name"></strong>
         <span id="handle"></span>
       </div>
-    </div>
-
-    <div id="warn-onboard" class="warn" style="display:none">
-      ⚠️ Add a Kaspa receiving address to start receiving tips.
-      <a href="https://kastip.app/onboard/address" target="_blank" rel="noopener">Set address →</a>
     </div>
 
     <div class="stats">

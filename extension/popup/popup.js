@@ -13,7 +13,7 @@ function bg(msg) {
 }
 
 function show(stateId) {
-  ['state-anon', 'state-anon-with-web', 'state-signed', 'state-loading'].forEach((id) => {
+  ['state-anon', 'state-anon-with-web', 'state-onboard-address', 'state-signed', 'state-loading'].forEach((id) => {
     document.getElementById(id).style.display = (id === stateId) ? '' : 'none';
   });
 }
@@ -37,14 +37,29 @@ async function checkPageStatus() {
   } catch (_) { /* ignore */ }
 }
 
+function renderOnboardAddress(user) {
+  show('state-onboard-address');
+  $('#onb-avatar').src = user.x_avatar_url || '';
+  $('#onb-display-name').textContent = user.x_display_name || ('@' + user.x_username);
+  $('#onb-handle').textContent = '@' + user.x_username;
+  $('#addr-error').style.display = 'none';
+  $('#kaspa-address').value = '';
+  $('#addr-save-btn').disabled = false;
+  $('#addr-save-btn').textContent = 'Save and continue';
+  setTimeout(() => $('#kaspa-address').focus(), 0);
+}
+
 async function renderSigned(user) {
+  if (user && user.needs_address) {
+    renderOnboardAddress(user);
+    return;
+  }
   show('state-signed');
   $('#avatar').src = user.x_avatar_url || '';
   $('#display-name').textContent = user.x_display_name || ('@' + user.x_username);
   $('#handle').textContent = '@' + user.x_username;
   $('#stat-recv').textContent = fmtKas(user.total_received_kas);
   $('#stat-sent').textContent = fmtKas(user.total_sent_kas);
-  $('#warn-onboard').style.display = user.needs_address ? '' : 'none';
   await checkPageStatus();
 }
 
@@ -124,6 +139,31 @@ $('#connect-different-btn').addEventListener('click', async () => {
 $('#signout-btn').addEventListener('click', async () => {
   await bg({ type: 'auth:logout' });
   show('state-anon');
+});
+
+$('#onb-signout-btn').addEventListener('click', async () => {
+  await bg({ type: 'auth:logout' });
+  show('state-anon');
+});
+
+$('#addr-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const addr = $('#kaspa-address').value.trim();
+  const btn = $('#addr-save-btn');
+  const err = $('#addr-error');
+  err.style.display = 'none';
+  err.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const r = await bg({ type: 'users:save-address', address: addr });
+    await renderSigned(r.user);
+  } catch (e) {
+    err.textContent = e.message || 'Save failed.';
+    err.style.display = '';
+    btn.disabled = false;
+    btn.textContent = 'Save and continue';
+  }
 });
 
 init();

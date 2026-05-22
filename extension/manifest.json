@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "KasTip — Tip Kaspa on X",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Tip Kaspa (KAS) to anyone on X with one click. Non-custodial, peer-to-peer, no fees.",
   "permissions": [
     "storage",

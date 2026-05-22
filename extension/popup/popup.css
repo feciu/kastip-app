@@ -99,3 +99,29 @@ body {
   margin-top: .25rem;
 }
 .row .btn-secondary { flex: 1; }
+
+.addr-input {
+  width: 100%;
+  padding: .65rem .75rem;
+  font-family: ui-monospace, "SF Mono", Monaco, monospace;
+  font-size: .82rem;
+  background: #1a1d2e;
+  border: 1px solid #2a2f44;
+  border-radius: 6px;
+  color: #e8eaed;
+  outline: none;
+}
+.addr-input:focus { border-color: #49e9c9; }
+.addr-input::placeholder { color: #5a6378; }
+.addr-error {
+  margin-top: .55rem;
+  padding: .5rem .65rem;
+  background: rgba(239, 68, 68, .1);
+  border: 1px solid rgba(239, 68, 68, .3);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: .8rem;
+  line-height: 1.4;
+}
+.hint a { color: #49e9c9; text-decoration: none; }
+.hint a:hover { text-decoration: underline; }
