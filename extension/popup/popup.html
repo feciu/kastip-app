@@ -11,9 +11,9 @@
 
   <!-- signed-out state (no web session detected) -->
   <div id="state-anon" style="display:none">
-    <p class="lead">Sign in to start tipping KAS to anyone on X.</p>
+    <p class="lead">Connect your X account to a Kaspa address — so people can tip your posts.</p>
     <button id="signin-btn" class="btn btn-primary">Connect X</button>
-    <p class="hint">Non-custodial. We never hold your KAS.</p>
+    <p class="hint">Non-custodial. Tips go directly between wallets.</p>
   </div>
 
   <!-- signed-out but kastip.app cookie detected — offer to link -->
@@ -39,7 +39,7 @@
         <span id="onb-handle"></span>
       </div>
     </div>
-    <p class="lead" style="margin-bottom:.75rem">One last step — your Kaspa address. Tips arrive directly here, peer-to-peer. We never hold your KAS.</p>
+    <p class="lead" id="addr-lead" style="margin-bottom:.75rem">One last step — your Kaspa address. Tips arrive directly here, peer-to-peer. We never hold your KAS.</p>
     <form id="addr-form">
       <input
         type="text"
@@ -53,10 +53,12 @@
         required
       >
       <button type="submit" id="addr-save-btn" class="btn btn-primary" style="margin-top:.6rem">Save and continue</button>
+      <button type="button" id="addr-cancel-btn" class="btn btn-link" style="display:none;margin-top:.25rem">Cancel</button>
       <div class="addr-error" id="addr-error" style="display:none"></div>
     </form>
-    <p class="hint">Don't have a Kaspa wallet yet? Install
-      <a href="https://kasware.xyz" target="_blank" rel="noopener">Kasware</a>,
+    <p class="hint" id="addr-hint">Don't have a Kaspa wallet yet? Install
+      <a href="https://kasware.xyz" target="_blank" rel="noopener">Kasware</a> or
+      <a href="https://chromewebstore.google.com/detail/kastle/oambclflhjfppdmkghokjmpppmaebego" target="_blank" rel="noopener">Kastle</a>,
       create a wallet, and copy your receiving address here.</p>
     <button id="onb-signout-btn" class="btn btn-link" style="margin-top:.25rem">Sign out</button>
   </div>
@@ -79,6 +81,14 @@
       <div class="stat">
         <div class="lbl">Sent</div>
         <div class="val" id="stat-sent">— KAS</div>
+      </div>
+    </div>
+
+    <div class="addr-display">
+      <div class="lbl">Receiving address</div>
+      <div class="addr-row">
+        <code id="signed-address"></code>
+        <button id="change-addr-btn" class="btn-text">Change</button>
       </div>
     </div>
 

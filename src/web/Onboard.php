@@ -145,7 +145,7 @@ final class Onboard
     <div class="error" id="error"></div>
   </form>
 
-  <p class="hint">Don't have a Kaspa wallet yet? Install <a href="https://kasware.xyz" target="_blank" rel="noopener" style="color:#49e9c9">Kasware</a>, create a wallet, and copy your receiving address here.</p>
+  <p class="hint">Don't have a Kaspa wallet yet? Install <a href="https://kasware.xyz" target="_blank" rel="noopener" style="color:#49e9c9">Kasware</a> or <a href="https://chromewebstore.google.com/detail/kastle/oambclflhjfppdmkghokjmpppmaebego" target="_blank" rel="noopener" style="color:#49e9c9">Kastle</a>, create a wallet, and copy your receiving address here.</p>
 </div>
 
 <script>

@@ -125,3 +125,41 @@ body {
 }
 .hint a { color: #49e9c9; text-decoration: none; }
 .hint a:hover { text-decoration: underline; }
+
+.addr-display {
+  background: #161927;
+  border: 1px solid #1f2335;
+  border-radius: 6px;
+  padding: .55rem .75rem;
+  margin-bottom: .75rem;
+}
+.addr-display .lbl {
+  font-size: .68rem;
+  color: #5a6378;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: .2rem;
+}
+.addr-display .addr-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.addr-display code {
+  font-family: ui-monospace, "SF Mono", Monaco, monospace;
+  font-size: .78rem;
+  color: #e8eaed;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-text {
+  background: transparent;
+  border: none;
+  color: #49e9c9;
+  font-size: .8rem;
+  cursor: pointer;
+  padding: 0;
+}
+.btn-text:hover { text-decoration: underline; }

@@ -37,21 +37,42 @@ async function checkPageStatus() {
   } catch (_) { /* ignore */ }
 }
 
-function renderOnboardAddress(user) {
+let addrMode = 'onboard';   // 'onboard' (initial) | 'edit' (change later)
+let cachedUser = null;
+
+function shortAddr(a) {
+  if (!a) return '';
+  return a.length > 28 ? a.slice(0, 14) + '…' + a.slice(-10) : a;
+}
+
+function renderOnboardAddress(user, mode = 'onboard') {
+  addrMode = mode;
   show('state-onboard-address');
   $('#onb-avatar').src = user.x_avatar_url || '';
   $('#onb-display-name').textContent = user.x_display_name || ('@' + user.x_username);
   $('#onb-handle').textContent = '@' + user.x_username;
   $('#addr-error').style.display = 'none';
-  $('#kaspa-address').value = '';
+  if (mode === 'edit') {
+    $('#addr-lead').textContent = 'Change your Kaspa receiving address. New tips will arrive at the new address; past tips already sent are unaffected.';
+    $('#kaspa-address').value = user.kaspa_address || '';
+    $('#addr-save-btn').textContent = 'Update';
+    $('#addr-cancel-btn').style.display = '';
+    $('#addr-hint').style.display = 'none';
+  } else {
+    $('#addr-lead').textContent = 'One last step — your Kaspa address. Tips arrive directly here, peer-to-peer. We never hold your KAS.';
+    $('#kaspa-address').value = '';
+    $('#addr-save-btn').textContent = 'Save and continue';
+    $('#addr-cancel-btn').style.display = 'none';
+    $('#addr-hint').style.display = '';
+  }
   $('#addr-save-btn').disabled = false;
-  $('#addr-save-btn').textContent = 'Save and continue';
   setTimeout(() => $('#kaspa-address').focus(), 0);
 }
 
 async function renderSigned(user) {
+  cachedUser = user;
   if (user && user.needs_address) {
-    renderOnboardAddress(user);
+    renderOnboardAddress(user, 'onboard');
     return;
   }
   show('state-signed');
@@ -60,6 +81,8 @@ async function renderSigned(user) {
   $('#handle').textContent = '@' + user.x_username;
   $('#stat-recv').textContent = fmtKas(user.total_received_kas);
   $('#stat-sent').textContent = fmtKas(user.total_sent_kas);
+  $('#signed-address').textContent = shortAddr(user.kaspa_address);
+  $('#signed-address').title = user.kaspa_address || '';
   await checkPageStatus();
 }
 
@@ -146,23 +169,33 @@ $('#onb-signout-btn').addEventListener('click', async () => {
   show('state-anon');
 });
 
+$('#change-addr-btn').addEventListener('click', () => {
+  if (cachedUser) renderOnboardAddress(cachedUser, 'edit');
+});
+
+$('#addr-cancel-btn').addEventListener('click', () => {
+  if (cachedUser) renderSigned(cachedUser);
+});
+
 $('#addr-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const addr = $('#kaspa-address').value.trim();
   const btn = $('#addr-save-btn');
   const err = $('#addr-error');
+  const originalLabel = btn.textContent;
   err.style.display = 'none';
   err.textContent = '';
   btn.disabled = true;
-  btn.textContent = 'Saving…';
+  btn.textContent = addrMode === 'edit' ? 'Updating…' : 'Saving…';
   try {
-    const r = await bg({ type: 'users:save-address', address: addr });
+    const msgType = addrMode === 'edit' ? 'users:update-address' : 'users:save-address';
+    const r = await bg({ type: msgType, address: addr });
     await renderSigned(r.user);
   } catch (e) {
     err.textContent = e.message || 'Save failed.';
     err.style.display = '';
     btn.disabled = false;
-    btn.textContent = 'Save and continue';
+    btn.textContent = originalLabel;
   }
 });
 
