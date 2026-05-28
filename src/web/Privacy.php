@@ -56,7 +56,7 @@ final class Privacy
 <p>Only to provide the tipping service:</p>
 <ul>
   <li>Authenticate your sessions across the web app and browser extension.</li>
-  <li>Look up Kaspa addresses by X handle (your handle → your address) so other users can tip you.</li>
+  <li>Look up Kaspa addresses by X handle (your handle → your address) so other users can tip you. The extension may also batch-check which X handles visible in your feed have a KasTip account, so tip buttons can be colored mint (ready) vs gray (invite needed) — only the visible handles are sent, never your browsing history.</li>
   <li>Verify on-chain transactions against your pending tip records.</li>
   <li>Show you your tip history on the dashboard.</li>
   <li>Prevent spam via rate limits.</li>
