@@ -28,6 +28,19 @@ let injectionCount = 0;
 let lookupCache = new Map();           // handle → {data, fetched_at}
 const LOOKUP_TTL = 60_000;
 
+// ─── differential color status (batch lookup) ─────────────────────────────
+// Per-handle status: 'ready' (recipient has Kaspa address) | 'invite' (no
+// account / no address) | 'unknown' (not yet resolved → render as mint
+// fallback). Buttons re-style when status arrives.
+const statusCache = new Map();         // handle → {status, fetched_at}
+const buttonsByHandle = new Map();     // handle → Set<HTMLButtonElement>
+const pendingHandles = new Set();
+const STATUS_TTL = 30 * 60 * 1000;     // 30 minutes
+const BATCH_DEBOUNCE_MS = 300;
+const BATCH_MAX_SIZE = 100;
+let batchTimer = null;
+let batchInflight = false;
+
 // ─── send to background (promisified) ─────────────────────────────────────
 function bg(msg) {
   return new Promise((resolve, reject) => {
@@ -175,7 +188,8 @@ function getOwnHandle() {
 
 function createTipButton(handle, anchorEl) {
   const btn = document.createElement('button');
-  btn.className = 'kastip-btn';
+  btn.className = 'kastip-btn kastip-btn--unknown';
+  btn.dataset.kastipStatus = 'unknown';
   btn.innerHTML = '<span class="kastip-icon">💰</span><span class="kastip-label">KasTip</span>';
   btn.title = `Tip KAS to @${handle}`;
   btn.dataset.handle = handle;
@@ -185,6 +199,9 @@ function createTipButton(handle, anchorEl) {
     e.stopImmediatePropagation();
     openTipDialog(handle, findTweetUrl(anchorEl));
   });
+  // Fire-and-forget status resolution (debounced + batched).
+  // Failure is silent — button stays 'unknown' (mint fallback).
+  requestStatusFor(handle, btn);
   return btn;
 }
 
@@ -217,18 +234,27 @@ function openTipDialog(handle, tweetUrl) {
   modal.querySelector('.kastip-close').addEventListener('click', close);
   modal.querySelector('.kastip-modal-overlay').addEventListener('click', close);
 
-  // Lookup handle then transition to right pane
   const body = modal.querySelector('.kastip-modal-body');
   body.innerHTML = '<div class="kastip-loading">Looking up @' + escapeHtml(handle) + '…</div>';
 
-  lookup(handle).then((info) => {
-    if (info.registered) {
-      renderRegisteredPane(modal, body, handle, info, tweetUrl);
-    } else {
-      renderUnregisteredPane(modal, body, handle, tweetUrl);
+  // Pre-check sender: if signed in but no Kaspa address, short-circuit with a
+  // friendly "set your address first" pane. Skip the check if signed out —
+  // the existing tip flow already handles sign-in (auth:start) when the user
+  // clicks Send. Avoids 409 from /tips/initiate at the very end of the flow.
+  getSenderAuthStatus().then((sender) => {
+    if (sender.signedIn && !sender.hasAddress) {
+      renderNeedsSenderAddress(modal, body, handle);
+      return;
     }
-  }).catch((err) => {
-    body.innerHTML = `<div class="kastip-error">Lookup failed: ${escapeHtml(err.message)}</div>`;
+    lookup(handle).then((info) => {
+      if (info.registered) {
+        renderRegisteredPane(modal, body, handle, info, tweetUrl);
+      } else {
+        renderUnregisteredPane(modal, body, handle, tweetUrl);
+      }
+    }).catch((err) => {
+      body.innerHTML = `<div class="kastip-error">Lookup failed: ${escapeHtml(err.message)}</div>`;
+    });
   });
 }
 
@@ -251,6 +277,150 @@ async function lookup(handle) {
   const resp = await bg({ type: 'api:lookup', handle });
   lookupCache.set(handle, { data: resp.data, fetched_at: Date.now() });
   return resp.data;
+}
+
+// ─── batch status lookup ──────────────────────────────────────────────────
+function applyStatusToButton(btn, status) {
+  btn.dataset.kastipStatus = status;
+  btn.classList.remove('kastip-btn--ready', 'kastip-btn--invite', 'kastip-btn--unknown');
+  btn.classList.add('kastip-btn--' + status);
+  const handle = btn.dataset.handle;
+  if (status === 'ready') {
+    btn.title = `✓ KasTip user — tip arrives directly to @${handle}`;
+  } else if (status === 'invite') {
+    btn.title = `Send invite to @${handle} — recipient claims later`;
+  } else {
+    btn.title = `Tip KAS to @${handle}`;
+  }
+}
+
+function registerButtonForHandle(handle, btn) {
+  let set = buttonsByHandle.get(handle);
+  if (!set) {
+    set = new Set();
+    buttonsByHandle.set(handle, set);
+  }
+  set.add(btn);
+}
+
+function requestStatusFor(handle, btn) {
+  registerButtonForHandle(handle, btn);
+
+  // Apply cached status immediately if fresh
+  const cached = statusCache.get(handle);
+  if (cached && (Date.now() - cached.fetched_at) < STATUS_TTL) {
+    applyStatusToButton(btn, cached.status);
+    return;
+  }
+
+  pendingHandles.add(handle);
+  scheduleBatch();
+}
+
+function scheduleBatch() {
+  if (batchTimer) return;
+  batchTimer = setTimeout(() => {
+    batchTimer = null;
+    flushBatch();
+  }, BATCH_DEBOUNCE_MS);
+}
+
+async function flushBatch() {
+  if (batchInflight) {
+    // Another batch in flight — try again shortly to pick up newly-pending handles
+    if (pendingHandles.size > 0) scheduleBatch();
+    return;
+  }
+  if (pendingHandles.size === 0) return;
+
+  // Drain up to BATCH_MAX_SIZE from pending set
+  const handles = [];
+  for (const h of pendingHandles) {
+    handles.push(h);
+    if (handles.length >= BATCH_MAX_SIZE) break;
+  }
+  handles.forEach((h) => pendingHandles.delete(h));
+
+  // Guard: skip lookup if user is signed out — backend requires auth and would
+  // 401. Leave buttons as 'unknown' (mint fallback, current behavior).
+  let signedIn = false;
+  try {
+    const s = await bg({ type: 'auth:status' });
+    signedIn = !!s.signedIn;
+  } catch { /* assume signed out */ }
+  if (!signedIn) {
+    // Mark all as unknown so we don't keep retrying them
+    handles.forEach((h) => statusCache.set(h, { status: 'unknown', fetched_at: Date.now() }));
+    return;
+  }
+
+  batchInflight = true;
+  try {
+    const resp = await bg({ type: 'api:lookup-batch', handles });
+    const statuses = (resp && resp.data && resp.data.statuses) || {};
+    const now = Date.now();
+    handles.forEach((h) => {
+      const s = statuses[h] || 'invite';   // missing → treat as invite
+      statusCache.set(h, { status: s, fetched_at: now });
+      const buttons = buttonsByHandle.get(h);
+      if (buttons) buttons.forEach((b) => applyStatusToButton(b, s));
+    });
+  } catch (e) {
+    // Network/backend error — leave buttons as 'unknown' (mint fallback).
+    // Don't cache the failure (let next scroll retry after a moment).
+    console.warn('[KasTip] lookup-batch failed, buttons stay neutral:', e.message);
+  } finally {
+    batchInflight = false;
+    // If more handles queued in the meantime, schedule next batch
+    if (pendingHandles.size > 0) scheduleBatch();
+  }
+}
+
+// ─── sender pre-check (no Kaspa address set → friendly redirect) ──────────
+// Strategy:
+//   1. Fast: ask background for cached auth status (no network).
+//   2. If signed in + has address → done, trust the cache.
+//   3. If signed in but NO address → could be stale (user just set address via
+//      web flow, cache hasn't refreshed yet). Force a /users/me refresh before
+//      blocking the tip with "set address first" pane.
+//   4. If signed out → return as-is; existing flow handles sign-in later.
+// No content-script-side cache: a few chrome.runtime messages per click are
+// trivially cheap, and avoid the "stale cache poisons next 60s" failure mode.
+async function getSenderAuthStatus() {
+  let status;
+  try { status = await bg({ type: 'auth:status' }); }
+  catch { return { signedIn: false, hasAddress: false }; }
+
+  if (!status.signedIn) return { signedIn: false, hasAddress: false };
+
+  const cachedHas = !!(status.user && status.user.kaspa_address);
+  if (cachedHas) return { signedIn: true, hasAddress: true };
+
+  // Cached "no address" — verify against the server before blocking
+  try {
+    const r = await bg({ type: 'auth:refresh-user' });
+    const freshHas = !!(r.user && r.user.kaspa_address);
+    return { signedIn: true, hasAddress: freshHas };
+  } catch {
+    return { signedIn: true, hasAddress: false };
+  }
+}
+
+function renderNeedsSenderAddress(modal, body, handle) {
+  body.innerHTML = `
+    <div class="kastip-needs-address">
+      <p style="font-size:1rem;margin-bottom:.5rem"><strong>Set your Kaspa address first</strong></p>
+      <p style="color:#71767b;font-size:.9rem;margin-bottom:1rem;line-height:1.4">
+        Before sending tips, you need a Kaspa receiving address — so people can tip you back too.
+        Click the KasTip icon in your browser toolbar (top right ↗) to set it in 30 seconds.
+      </p>
+      <a href="https://kastip.app/onboard/address" target="_blank" rel="noopener"
+         class="kastip-secondary-btn"
+         style="display:block;text-align:center;text-decoration:none;margin-top:.25rem">
+        Or set it on the website →
+      </a>
+    </div>
+  `;
 }
 
 // ─── REGISTERED pane ──────────────────────────────────────────────────────
@@ -466,7 +636,7 @@ async function sendViaWallet(modal, body, handle, init, amt, tweetUrl, walletId)
 async function renderQrPane(modal, body, handle, init) {
   body.innerHTML = `
     <button id="kastip-qr-back" class="kastip-link-btn" type="button">← Back</button>
-    <p style="color:#71767b;margin:.5rem 0 .5rem">Scan with any Kaspa wallet (Kaspium, Tangem, KSPR, etc.). We'll auto-detect the transaction once it lands on-chain — typically within a few seconds.</p>
+    <p style="color:#71767b;margin:.5rem 0 .5rem">Scan with <strong>any Kaspa wallet on your phone</strong> — Kaspium, Kasware Mobile, Tangem, KSPR, etc. We'll auto-detect the transaction once it lands on-chain (usually within a few seconds).</p>
 
     <div class="kastip-qr-amount-banner">
       <div class="kastip-qr-amount-big">${init.amount_kas} KAS</div>

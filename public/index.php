@@ -49,6 +49,7 @@ $r->get('/api/users/me',          fn() => \KasTip\Api\UsersMe::handle());
 $r->put('/api/users/me/settings', fn() => \KasTip\Api\UsersMeSettings::handle());
 $r->post('/api/users/register',   fn() => \KasTip\Api\UsersRegister::handle());
 $r->get('/api/users/lookup',      fn() => \KasTip\Api\UsersLookup::handle());
+$r->post('/api/users/lookup-batch', fn() => \KasTip\Api\UsersLookupBatch::handle());
 
 // ─── tips ─────────────────────────────────────────────────────────────────
 $r->post('/api/tips/initiate',     fn() => \KasTip\Api\TipsInitiate::handle());

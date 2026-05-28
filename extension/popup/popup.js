@@ -93,6 +93,20 @@ async function init() {
     if (status.signedIn) {
       if (status.user) {
         await renderSigned(status.user);
+        // Soft refresh in background — picks up changes since last popup open
+        // (e.g. tips sent in another tab, address added via kastip.app web flow).
+        bg({ type: 'auth:refresh-user' })
+          .then((r) => {
+            // Don't disrupt the onboard form mid-typing if status didn't change.
+            // But DO re-render if user just added an address (needs_address flipped).
+            const onboardVisible = document.getElementById('state-onboard-address').style.display === '';
+            if (onboardVisible && r.user.needs_address) {
+              cachedUser = r.user;       // refresh cache only, leave form intact
+              return;
+            }
+            renderSigned(r.user);
+          })
+          .catch(() => { /* network blip — keep showing cached */ });
       } else {
         const r = await bg({ type: 'auth:refresh-user' });
         await renderSigned(r.user);

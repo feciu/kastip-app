@@ -209,6 +209,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true, data });
           return;
         }
+        case 'api:lookup-batch': {
+          const data = await apiFetch('POST', '/users/lookup-batch', { handles: msg.handles });
+          sendResponse({ ok: true, data });
+          return;
+        }
         case 'api:tip-initiate': {
           const data = await apiFetch('POST', '/tips/initiate', msg.body);
           sendResponse({ ok: true, data });
@@ -216,6 +221,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'api:tip-confirm': {
           const data = await apiFetch('POST', '/tips/confirm', msg.body);
+          // Stats changed — refresh cached user so popup shows fresh totals
+          try {
+            const user = await apiFetch('GET', '/users/me');
+            await setCachedUser(user);
+          } catch {/* ignore — popup will retry on next open */}
           sendResponse({ ok: true, data });
           return;
         }
