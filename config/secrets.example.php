@@ -52,5 +52,7 @@ return [
         'env' => 'prod',                  // 'prod' | 'dev'
         'base_url' => 'https://kastip.app',
         'debug' => false,
+        // user_id list for internal /admin/* pages. Empty = nobody is admin.
+        'admin_user_ids' => [],
     ],
 ];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace KasTip\Web;
 
 use KasTip\App;
+use KasTip\Auth\Admin;
 use KasTip\Auth\Session;
 
 /**
@@ -42,10 +43,11 @@ final class Dashboard
             exit;
         }
 
-        self::renderHtml($user);
+        $isAdmin = Admin::isAdmin((int) $session['user_id']);
+        self::renderHtml($user, $isAdmin);
     }
 
-    private static function renderHtml(array $user): void
+    private static function renderHtml(array $user, bool $isAdmin = false): void
     {
         $username    = htmlspecialchars($user['x_username'], ENT_QUOTES, 'UTF-8');
         $displayName = htmlspecialchars($user['x_display_name'] ?? '', ENT_QUOTES, 'UTF-8');
@@ -192,6 +194,62 @@ final class Dashboard
   }
   .load-more:hover{border-color:#49e9c9;color:#49e9c9}
   .load-more:disabled{opacity:.5;cursor:not-allowed}
+
+  /* ─── admin: welcomes tab ──────────────────────── */
+  .admin-filters{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+  .admin-filter{
+    padding:.4rem .8rem;background:#161927;border:1px solid #1f2335;
+    border-radius:99px;color:#a8b1c2;font-size:.82rem;cursor:pointer;
+    transition:border-color .15s,color .15s;
+  }
+  .admin-filter:hover{border-color:#49e9c9;color:#e8eaed}
+  .admin-filter.active{background:rgba(73,233,201,.1);border-color:#49e9c9;color:#49e9c9}
+  .admin-filter .cnt{
+    margin-left:.4rem;font-weight:600;font-size:.78rem;
+    color:#5a6378;
+  }
+  .admin-filter.active .cnt{color:#49e9c9}
+
+  .admin-table-wrap{background:#161927;border:1px solid #1f2335;border-radius:12px;overflow:hidden}
+  .admin-row{
+    display:grid;grid-template-columns:auto 1fr auto auto auto;gap:1rem;align-items:center;
+    padding:.7rem 1rem;border-bottom:1px solid #1f2335;
+  }
+  .admin-row:last-child{border-bottom:none}
+  .admin-row .avatar{
+    width:36px;height:36px;border-radius:50%;background:#0d0f1a;border:1px solid #2a2f44;
+  }
+  .admin-row .avatar img{width:100%;height:100%;border-radius:50%}
+  .admin-row .who{display:flex;flex-direction:column;min-width:0}
+  .admin-row .who strong{font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .admin-row .who .meta{font-size:.78rem;color:#5a6378}
+  .admin-badge{
+    font-size:.7rem;padding:.18rem .55rem;border-radius:99px;white-space:nowrap;
+  }
+  .b-needs{background:rgba(245,158,11,.15);color:#fcd34d}
+  .b-tipped{background:rgba(73,233,201,.12);color:#49e9c9}
+  .b-skipped{background:rgba(120,120,140,.15);color:#a8b1c2}
+  .b-no_setup{background:rgba(168,113,234,.15);color:#c4b5fd}
+  .b-active{background:rgba(73,233,201,.08);color:#49e9c9;border:1px solid rgba(73,233,201,.3)}
+
+  .admin-actions{display:flex;gap:.4rem;align-items:center}
+  .admin-btn{
+    padding:.4rem .75rem;background:transparent;border:1px solid #2a2f44;
+    color:#a8b1c2;font-size:.78rem;border-radius:6px;cursor:pointer;
+    transition:border-color .15s,color .15s;
+  }
+  .admin-btn:hover{border-color:#49e9c9;color:#49e9c9}
+  .admin-btn.danger:hover{border-color:#ef4444;color:#fca5a5}
+
+  .admin-empty{padding:2rem 1rem;text-align:center;color:#5a6378;font-size:.9rem}
+  .admin-loading{padding:1.5rem;text-align:center;color:#5a6378}
+
+  @media (max-width:600px){
+    .admin-row{grid-template-columns:auto 1fr;gap:.5rem .75rem}
+    .admin-row .badge-col{grid-column:2;grid-row:2}
+    .admin-row .activity-col{grid-column:2;grid-row:3;font-size:.78rem;color:#5a6378}
+    .admin-row .admin-actions{grid-column:1/-1;grid-row:4;margin-top:.4rem}
+  }
 </style>
 </head>
 <body>
@@ -229,6 +287,7 @@ final class Dashboard
     <button class="tab active" data-pane="received">Received</button>
     <button class="tab" data-pane="sent">Sent</button>
     <button class="tab" data-pane="settings">Settings</button>
+    <?php if ($isAdmin): ?><button class="tab" data-pane="admin">Welcomes</button><?php endif; ?>
   </div>
 
   <div class="pane active" id="pane-received">
@@ -240,6 +299,21 @@ final class Dashboard
     <div id="sent-list" class="tip-list"></div>
     <button class="load-more" id="sent-more" style="display:none">Load more</button>
   </div>
+
+  <?php if ($isAdmin): ?>
+  <div class="pane" id="pane-admin">
+    <div class="admin-filters" id="admin-filters">
+      <button class="admin-filter active" data-filter="needs">Needs welcome <span class="cnt" id="cnt-needs">–</span></button>
+      <button class="admin-filter" data-filter="tipped">Tipped <span class="cnt" id="cnt-tipped">–</span></button>
+      <button class="admin-filter" data-filter="skipped">Skipped <span class="cnt" id="cnt-skipped">–</span></button>
+      <button class="admin-filter" data-filter="no_setup">No setup <span class="cnt" id="cnt-no_setup">–</span></button>
+      <button class="admin-filter" data-filter="all">All <span class="cnt" id="cnt-all">–</span></button>
+    </div>
+    <div class="admin-table-wrap" id="admin-table">
+      <div class="admin-loading">Loading…</div>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <div class="pane" id="pane-settings">
     <div class="settings-card">
@@ -300,11 +374,16 @@ async function api(method, path, body){
 }
 
 // ─── tabs ────────────────────────────────────────
+let adminLoaded = false;
 $$('.tab').forEach(btn => {
   btn.addEventListener('click', () => {
     $$('.tab').forEach(b => b.classList.toggle('active', b === btn));
     const target = btn.dataset.pane;
     $$('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + target));
+    if (target === 'admin' && !adminLoaded) {
+      adminLoaded = true;
+      loadAdminWelcomes('needs');
+    }
   });
 });
 
@@ -420,6 +499,87 @@ $('#copy-addr').addEventListener('click', e => {
 $('#logout-btn').addEventListener('click', async () => {
   try { await api('POST', '/api/auth/logout'); } catch(_){}
   location.href = '/';
+});
+
+// ─── admin: welcomes ───────────────────────────
+async function loadAdminWelcomes(filter){
+  const wrap = document.getElementById('admin-table');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="admin-loading">Loading…</div>';
+  // Update active filter button
+  document.querySelectorAll('.admin-filter').forEach(b =>
+    b.classList.toggle('active', b.dataset.filter === filter)
+  );
+  try {
+    const data = await api('GET', '/api/admin/welcomes?filter=' + encodeURIComponent(filter));
+    // Update counts
+    ['needs','tipped','skipped','no_setup','all'].forEach(k => {
+      const el = document.getElementById('cnt-' + k);
+      if (el) el.textContent = data.totals[k] ?? 0;
+    });
+    if (!data.users.length) {
+      wrap.innerHTML = '<div class="admin-empty">No users in this filter.</div>';
+      return;
+    }
+    wrap.innerHTML = data.users.map(adminRowHtml).join('');
+    wrap.querySelectorAll('[data-skip-id]').forEach(btn => {
+      btn.addEventListener('click', () => toggleSkip(parseInt(btn.dataset.skipId, 10), btn.dataset.action, filter));
+    });
+  } catch (e) {
+    wrap.innerHTML = '<div class="admin-empty">Load failed: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+function adminRowHtml(u){
+  const display = u.x_display_name || ('@' + u.x_username);
+  const avatar = u.x_avatar_url
+    ? `<img src="${escapeHtml(u.x_avatar_url)}" alt="" referrerpolicy="no-referrer">`
+    : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5a6378">@</div>';
+  const badge = badgeFor(u);
+  const activitySend = u.tips_sent_count > 0
+    ? `<span class="admin-badge b-active">⚡ ${u.tips_sent_count} sent</span>`
+    : '';
+  const welcomeInfo = u.welcomed_by_you
+    ? `<span class="admin-badge b-tipped" title="${u.welcome_kas} KAS in ${u.welcome_count} tip(s)">✓ ${u.welcome_kas} KAS</span>`
+    : '';
+  const xProfile = `<a class="admin-btn" href="https://x.com/${encodeURIComponent(u.x_username)}" target="_blank" rel="noopener">X ↗</a>`;
+  const skipBtn = (u.category === 'needs')
+    ? `<button class="admin-btn danger" data-skip-id="${u.id}" data-action="skipped">Skip</button>`
+    : (u.welcome_status === 'skipped')
+      ? `<button class="admin-btn" data-skip-id="${u.id}" data-action="pending">Un-skip</button>`
+      : '';
+  return `
+    <div class="admin-row">
+      <div class="avatar">${avatar}</div>
+      <div class="who">
+        <strong>${escapeHtml(display)}</strong>
+        <span class="meta">@${escapeHtml(u.x_username)} · ${formatRel(u.created_at)}</span>
+      </div>
+      <div class="badge-col">${badge}</div>
+      <div class="activity-col" style="display:flex;gap:.35rem">${welcomeInfo}${activitySend}</div>
+      <div class="admin-actions">${xProfile}${skipBtn}</div>
+    </div>
+  `;
+}
+
+function badgeFor(u){
+  const label = {needs:'Needs welcome', tipped:'Tipped', skipped:'Skipped', no_setup:'No setup'}[u.category] || u.category;
+  return `<span class="admin-badge b-${u.category}">${label}</span>`;
+}
+
+async function toggleSkip(id, status, currentFilter){
+  try {
+    await api('POST', '/api/admin/users/' + id + '/welcome-status', {status});
+    showToast(status === 'skipped' ? 'Marked as skipped.' : 'Restored to pending.');
+    loadAdminWelcomes(currentFilter);
+  } catch (e) {
+    showToast('Update failed: ' + e.message, true);
+  }
+}
+
+// Filter pill click handlers
+document.querySelectorAll('.admin-filter').forEach(btn => {
+  btn.addEventListener('click', () => loadAdminWelcomes(btn.dataset.filter));
 });
 
 // ─── boot ──────────────────────────────────────

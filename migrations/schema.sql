@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     x_avatar_url VARCHAR(512),
     kaspa_address VARCHAR(80) NOT NULL,
     auto_reply_enabled TINYINT(1) NOT NULL DEFAULT 1,
+    welcome_status ENUM('pending','skipped') NOT NULL DEFAULT 'pending',
     total_received_kas DECIMAL(20,8) NOT NULL DEFAULT 0,
     total_sent_kas DECIMAL(20,8) NOT NULL DEFAULT 0,
     tip_count_received INT NOT NULL DEFAULT 0,

@@ -58,6 +58,10 @@ $r->get('/api/tips/sent',          fn() => \KasTip\Api\TipsList::sent());
 $r->get('/api/tips/received',      fn() => \KasTip\Api\TipsList::received());
 $r->get('/api/tips/{id}/status',   fn($p) => \KasTip\Api\TipsList::status((int) $p['id']));
 
+// ─── admin (gated by app.admin_user_ids in secrets.php) ───────────────────
+$r->get('/api/admin/welcomes',                       fn() => \KasTip\Api\AdminWelcomes::handle());
+$r->post('/api/admin/users/{id}/welcome-status',     fn($p) => \KasTip\Api\AdminWelcomeStatus::handle((int) $p['id']));
+
 // ─── web pages (server-rendered HTML) ─────────────────────────────────────
 $r->get('/onboard/address', fn() => \KasTip\Web\Onboard::renderAddressForm());
 $r->get('/dashboard',       fn() => \KasTip\Web\Dashboard::render());
